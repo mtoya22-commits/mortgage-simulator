@@ -16,17 +16,29 @@ export function buildSavedMortgage(
   input: MortgageInput,
   savedAt: string = new Date().toISOString(),
 ): SavedMortgage {
+  const isFixedPeriod = input.rateType === 'fixed-period';
+
   return {
     version: 1,
     source: 'mortgage-simulator',
     savedAt,
     mortgage: {
       balance: safeNumber(input.balance),
+      // 生活設計へ反映する最終的な毎月返済額（auto/manual いずれか）
       monthlyPayment: safeNumber(input.monthlyPayment),
+      calculatedMonthlyPayment: safeNumber(input.calculatedMonthlyPayment),
+      monthlyPaymentSource: input.monthlyPaymentSource,
       bonusAnnual: safeNumber(input.bonusAnnual),
       remainingYears: safeNumber(input.remainingYears),
       rate: safeNumber(input.rate),
       rateType: input.rateType,
+      // 固定期間選択型以外では固定期間 2 項目は未設定にする
+      ...(isFixedPeriod && input.fixedPeriodRemainingYears != null
+        ? { fixedPeriodRemainingYears: safeNumber(input.fixedPeriodRemainingYears) }
+        : {}),
+      ...(isFixedPeriod && input.postFixedRate != null
+        ? { postFixedRate: safeNumber(input.postFixedRate) }
+        : {}),
       repayMethod: input.repayMethod,
     },
   };
