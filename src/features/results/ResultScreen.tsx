@@ -10,6 +10,7 @@ import {
   rateScenario,
   buildAmortizationSchedule,
   fixedPeriodImpact,
+  monthlyPaymentDivergence,
   safeNumber,
 } from '../../lib/mortgage';
 import { saveMortgage } from '../../lib/storage';
@@ -24,6 +25,7 @@ export function ResultScreen() {
   const result = useMemo(() => computeResult(input), [input]);
   const schedule = useMemo(() => buildAmortizationSchedule(input), [input]);
   const impact = useMemo(() => fixedPeriodImpact(input), [input]);
+  const divergence = useMemo(() => monthlyPaymentDivergence(input), [input]);
   const baseRate = safeNumber(input.rate);
   const inputMonthly = safeNumber(input.monthlyPayment);
   const isEqualPrincipal = input.repayMethod === 'equal-principal';
@@ -105,6 +107,7 @@ export function ResultScreen() {
               <KV label={ms.diffLabel} value={`${signedYen(monthlyDiff)} / 月`} emphasize />
             )}
           </dl>
+          {divergence.significant && <p className="notice">{ms.divergenceNotice}</p>}
           {isEqualPrincipal && <p className="muted panel__note">{ms.equalPrincipalNote}</p>}
           <p className="muted panel__note">{ms.note}</p>
         </section>
@@ -131,7 +134,9 @@ export function ResultScreen() {
               <span className="muted" role="cell">
                 現在 {percent(baseRate)}
               </span>
-              <span role="cell">{yenPerMonth(result.referenceMonthly)}</span>
+              <span role="cell">
+                {yenPerMonth(inputMonthly > 0 ? inputMonthly : result.referenceMonthly)}
+              </span>
               <span className="muted" role="cell">
                 —
               </span>
@@ -145,7 +150,11 @@ export function ResultScreen() {
                   +{percent(p.deltaPct, 1)}
                   <span className="muted preset-newrate"> （{percent(p.newRate)}）</span>
                 </span>
-                <span role="cell">{yenPerMonth(p.referenceMonthly)}</span>
+                <span role="cell">
+                  {yenPerMonth(
+                    inputMonthly > 0 ? inputMonthly + p.monthlyIncrease : p.referenceMonthly,
+                  )}
+                </span>
                 <span className="is-up" role="cell">
                   {signedYen(p.annualIncrease)}
                 </span>
@@ -155,12 +164,9 @@ export function ResultScreen() {
               </div>
             ))}
           </div>
-          {inputMonthly > 0 && (
-            <p className="muted preset-note">
-              ※ 参考月返済額は概算です。入力した毎月返済額（{yenPerMonth(inputMonthly)}）とは
-              前提により差が出ることがあります。
-            </p>
-          )}
+          <p className="muted preset-note">
+            {inputMonthly > 0 ? t.presetNoteInput : t.presetNoteReference}
+          </p>
         </section>
 
         {/* 1年ごとのローン残高推移グラフ */}

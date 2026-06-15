@@ -135,6 +135,8 @@ export const strings = {
       diffLabel: '入力額との差',
       autoTag: '自動計算をそのまま使用',
       manualTag: '手動で修正済み',
+      divergenceNotice:
+        '入力された毎月返済額と、残高・金利・残り年数から計算した参考月返済額に差があります。ボーナス返済、契約時の条件、返済方式、金利見直し時期、金融機関の端数処理などにより差が出ることがあります。生活設計への反映には、入力された実際の毎月返済額を使用します。',
       equalPrincipalNote:
         '元金均等は、返済初期の月返済額が大きく、後半に向けて下がっていきます。上の「初回付近」と「平均」はその目安です。',
       note: '参考月返済額は、残高・金利・残り年数から計算した概算です。実際の返済額は、当初借入条件、返済方式、ボーナス返済、金利見直しルール、金融機関の端数処理などにより異なります。',
@@ -181,6 +183,7 @@ export const strings = {
       increase: '＋',
       reset: '現在の金利に戻す',
       referenceMonthly: '参考 月返済額',
+      monthlyAnchored: '金利変更後の月返済額（目安）',
       monthlyIncrease: '毎月の負担増（概算ベース）',
       annualIncrease: '年間負担増の目安',
       remainingTotalIncrease: '残り返済総額への影響の目安',
@@ -189,14 +192,18 @@ export const strings = {
     },
 
     presetHeading: '金利が上がった場合の参考影響',
-    presetLead: '現在の金利から、それぞれ上がった場合の参考月返済額と負担増の目安です。',
+    presetLead: '現在の金利から、それぞれ上がった場合の月返済額と負担増の目安です。',
     presetColumns: {
       delta: '金利',
-      monthly: '参考 月返済額',
+      monthly: '月返済額（目安）',
       vsUser: '現在返済額との差',
       annual: '年間負担増',
       total: '残り総額への影響',
     },
+    presetNoteInput:
+      '※ 月返済額は、入力した毎月返済額を起点に、金利上昇分（計算）を加えた目安です。増加幅は残高・金利・残り年数からの概算です。',
+    presetNoteReference:
+      '※ 月返済額は、残高・金利・残り年数から計算した参考額です。実際の返済額とは異なります。',
 
     conditionHeading: '入力した条件の確認',
     conditionLead: 'この試算に使った条件です。変えたいときは「条件を変えて再計算」から。',
@@ -232,8 +239,8 @@ export const strings = {
   } as Record<RepayMethod, string>,
 };
 
-/** 金利ステッパーの刻み幅候補（%ポイント）。0.05 を含むことで 0.25 にも到達できる。 */
-export const RATE_STEPS = [0.05, 0.1, 0.5] as const;
+/** 金利ステッパーの刻み幅候補（%ポイント）。細かい刻みで微調整できる。 */
+export const RATE_STEPS = [0.005, 0.01, 0.05, 0.1] as const;
 
 /** プリセットの金利上昇シナリオ（%ポイント）。 */
 export const RATE_PRESETS = [0.5, 1.0, 2.0] as const;

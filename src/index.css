@@ -469,6 +469,19 @@
   color: var(--band-needs);
 }
 
+/* 注意表示（赤は使わず、落ち着いたブラス/ブラウンで知らせる） */
+.notice {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--brass);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: rgba(169, 139, 93, 0.08); /* --brass の淡い面 */
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
 /* ラベル + 値の行（毎月返済額確認・固定期間） */
 .kv {
   margin: 0;

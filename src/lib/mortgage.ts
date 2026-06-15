@@ -10,6 +10,7 @@ import type {
   AmortizationSchedule,
   AmortPoint,
   FixedPeriodImpact,
+  MonthlyDivergence,
 } from '../types/mortgage';
 
 /**
@@ -131,6 +132,37 @@ export function referenceMonthlyByMethod(
   return method === 'equal-principal'
     ? equalPrincipalAverageMonthly(balance, annualRatePct, remainingYears)
     : equalInstallmentMonthly(balance, annualRatePct, remainingYears);
+}
+
+/**
+ * 入力した毎月返済額と参考月返済額の差が「大きい」か。
+ * 閾値: 差が月 5,000 円以上、または 入力した毎月返済額の 5% 以上。
+ * いずれかが 0 以下のときは判定対象外（false）。
+ */
+export function isSignificantMonthlyDivergence(
+  inputMonthly: number,
+  reference: number,
+): boolean {
+  if (inputMonthly <= 0 || reference <= 0) return false;
+  const absDiff = Math.abs(inputMonthly - reference);
+  return absDiff >= 5000 || absDiff >= inputMonthly * 0.05;
+}
+
+/** 入力した毎月返済額と参考月返済額の乖離を求める。 */
+export function monthlyPaymentDivergence(input: MortgageInput): MonthlyDivergence {
+  const reference = referenceMonthlyByMethod(
+    input.balance,
+    input.rate,
+    input.remainingYears,
+    input.repayMethod,
+  );
+  const inputMonthly = safeNumber(input.monthlyPayment);
+  return {
+    referenceMonthly: reference,
+    inputMonthly,
+    diff: inputMonthly - reference,
+    significant: isSignificantMonthlyDivergence(inputMonthly, reference),
+  };
 }
 
 /** 入力一式から結果の主指標をまとめて計算する。 */

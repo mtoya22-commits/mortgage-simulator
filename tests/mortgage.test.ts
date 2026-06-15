@@ -14,6 +14,8 @@ import {
   buildAmortizationSchedule,
   fixedPeriodImpact,
   fixedPeriodExceedsTerm,
+  isSignificantMonthlyDivergence,
+  monthlyPaymentDivergence,
 } from '../src/lib/mortgage';
 import { buildSavedMortgage, saveMortgage, STORAGE_KEY } from '../src/lib/storage';
 import { useMortgageStore, initialInput } from '../src/store/useMortgageStore';
@@ -490,6 +492,48 @@ describe('fixedPeriodImpact / fixedPeriodExceedsTerm', () => {
     ).toBe(false);
     // 変動金利では常に false
     expect(fixedPeriodExceedsTerm(makeInput({ rateType: 'variable' }))).toBe(false);
+  });
+});
+
+describe('isSignificantMonthlyDivergence', () => {
+  it('差が 5,000 円以上なら有意（5%閾値を下回っても）', () => {
+    // 200,000 の 5% = 10,000。差 6,000 は 5% 未満だが 5,000 以上 → true
+    expect(isSignificantMonthlyDivergence(200_000, 206_000)).toBe(true);
+    expect(isSignificantMonthlyDivergence(200_000, 203_000)).toBe(false); // 差3,000
+  });
+
+  it('差が入力額の 5% 以上なら有意（5,000 円未満でも）', () => {
+    // 80,000 の 5% = 4,000。差 4,500 は 5,000 未満だが 5% 以上 → true
+    expect(isSignificantMonthlyDivergence(80_000, 84_500)).toBe(true);
+    expect(isSignificantMonthlyDivergence(80_000, 83_000)).toBe(false); // 差3,000 < 4,000
+  });
+
+  it('入力額または参考額が 0 以下なら対象外（false）', () => {
+    expect(isSignificantMonthlyDivergence(0, 100_000)).toBe(false);
+    expect(isSignificantMonthlyDivergence(100_000, 0)).toBe(false);
+  });
+
+  it('符号によらず絶対差で判定する', () => {
+    expect(isSignificantMonthlyDivergence(120_000, 100_000)).toBe(true);
+    expect(isSignificantMonthlyDivergence(100_000, 120_000)).toBe(true);
+  });
+});
+
+describe('monthlyPaymentDivergence', () => {
+  it('参考額・入力額・差・significant を返す', () => {
+    const ref = referenceMonthlyByMethod(30_000_000, 0.925, 25, 'equal-payment');
+    // 参考額より明らかに小さい入力額 → 有意
+    const d = monthlyPaymentDivergence(makeInput({ monthlyPayment: Math.round(ref) - 12_000 }));
+    expect(d.referenceMonthly).toBeCloseTo(ref, 6);
+    expect(d.inputMonthly).toBe(Math.round(ref) - 12_000);
+    expect(d.diff).toBeCloseTo(d.inputMonthly - d.referenceMonthly, 6);
+    expect(d.significant).toBe(true);
+  });
+
+  it('入力額が参考額に近いと significant=false', () => {
+    const ref = referenceMonthlyByMethod(30_000_000, 0.925, 25, 'equal-payment');
+    const d = monthlyPaymentDivergence(makeInput({ monthlyPayment: Math.round(ref) + 1_000 }));
+    expect(d.significant).toBe(false);
   });
 });
 
