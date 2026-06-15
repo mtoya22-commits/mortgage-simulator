@@ -75,6 +75,10 @@ export interface AmortizationSchedule {
   payoffYear: number | null;
   /** 固定期間が終了する経過年数（固定期間選択型のみ, それ以外 null） */
   fixedPeriodEndYear: number | null;
+  /** 描画に使った返済額の種類（reference=参考月返済額 / input=入力した毎月返済額） */
+  paymentBasis: 'reference' | 'input';
+  /** 入力した毎月返済額での試算を試みたが、参考ベースへ戻したか */
+  inputPaymentFellBack: boolean;
 }
 
 /** 固定期間選択型: 固定期間終了後の参考影響 */

@@ -205,16 +205,25 @@ export function fixedPeriodExceedsTerm(input: MortgageInput): boolean {
   return safeNumber(fixed) > safeNumber(total);
 }
 
+interface RunResult {
+  points: AmortPoint[];
+  payoffYear: number | null;
+  fixedPeriodEndYear: number | null;
+  /** 返済期間 n 月内に残高が ~0 に到達したか（手動額ベース採否の判定に使う） */
+  amortized: boolean;
+}
+
 /**
- * 1 年ごとの残高推移を内部の月次シミュレーションで生成する（表示は年次点のみ）。
+ * 月次シミュレーションの実体（表示は年次点のみ）。
  *
- * - equal-payment: 支払額 = 元利均等概算。固定期間終了月で金利を postFixedRate に切替え、
- *   残元金・残月数で支払を再計算。
+ * - equal-payment: 支払額 = 参考の元利均等概算。固定期間終了月で金利を postFixedRate に切替え、
+ *   残元金・残月数で支払を再計算。`monthlyOverride` を渡すと（元利均等のみ）その額を全期間一定の
+ *   支払額として使う（＝入力した毎月返済額ベース。固定期間でも額は一定）。
  * - equal-principal: 毎月の元金 = 初期残高 / n 一定、利息 = 残高 × 月利（金利は区間で切替）。
  * - ボーナス: bonusAnnual を年 1 回（各年末）の追加元金返済として残高から概算減算。
  * - 残高は 0 未満にせず、完済後は 0 で停止する。
  */
-export function buildAmortizationSchedule(input: MortgageInput): AmortizationSchedule {
+function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunResult {
   const principal0 = safeNumber(input.balance);
   const totalYears = Math.max(0, Math.round(safeNumber(input.remainingYears)));
   const baseAge = safeNumber(input.currentAge);
@@ -248,21 +257,38 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
 
   // 計算不能（残高/年数が 0）の場合は現在点のみ返す
   if (principal0 === 0 || n === 0) {
-    return { points, payoffYear: principal0 === 0 ? 0 : null, fixedPeriodEndYear };
+    return {
+      points,
+      payoffYear: principal0 === 0 ? 0 : null,
+      fixedPeriodEndYear,
+      amortized: principal0 === 0,
+    };
   }
 
   let balance = principal0;
   let payoffYear: number | null = null;
 
+  // 入力した毎月返済額ベース（元利均等のみ。全期間一定）
+  const useOverride =
+    monthlyOverride != null && monthlyOverride > 0 && method === 'equal-payment';
+
   // equal-payment は区間ごとに支払額を再計算する。初期区間の支払額を求める。
   const equalPrincipalPortion = principal0 / n; // 元金均等の毎月元金（一定）
-  let payment = equalInstallmentMonthly(principal0, input.rate, totalYears);
+  let payment = useOverride
+    ? monthlyOverride
+    : equalInstallmentMonthly(principal0, input.rate, totalYears);
 
   for (let m = 1; m <= n && balance > 0; m++) {
     const r = rateAtMonth(m);
 
     // 固定期間終了の月に達したら equal-payment は残元金・残月数で支払を組み直す
-    if (method === 'equal-payment' && fixedEndMonth != null && m === fixedEndMonth + 1) {
+    // （ただし入力額ベースのときは一定額を維持する）
+    if (
+      method === 'equal-payment' &&
+      !useOverride &&
+      fixedEndMonth != null &&
+      m === fixedEndMonth + 1
+    ) {
       const remainingMonths = n - fixedEndMonth;
       const postYears = remainingMonths / 12;
       payment = equalInstallmentMonthly(balance, safeNumber(input.postFixedRate), postYears);
@@ -302,13 +328,62 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
     }
   }
 
+  // 返済期間内に完済したか（端数補正の前に実残高で判定）
+  const amortized = balance <= principal0 * 1e-6;
+
   // ボーナス未反映等で端数が残った場合、最終年に 0 点を補う（完済予定年数で打ち切り）
   const last = points[points.length - 1];
-  if (last && last.balance > 0 && last.year >= totalYears) {
+  if (amortized && last && last.balance > 0 && last.year >= totalYears) {
     points.push({ year: totalYears, age: baseAge + totalYears, balance: 0 });
   }
 
-  return { points, payoffYear, fixedPeriodEndYear };
+  return { points, payoffYear, fixedPeriodEndYear, amortized };
+}
+
+/**
+ * 1 年ごとの残高推移を生成する。
+ *
+ * 既定は参考月返済額（残高・金利・残り年数・返済方式から計算）ベース。
+ * ただし返済方式が元利均等で毎月返済額が手動修正済みのときは、その入力額ベースを試み、
+ * 返済期間内に完済する場合のみ採用する（生活設計上の実支出に近づけるため）。
+ * 完済しない／元金均等／自動計算のままの場合は参考ベースへフォールバックする。
+ */
+export function buildAmortizationSchedule(input: MortgageInput): AmortizationSchedule {
+  const eligible =
+    input.repayMethod === 'equal-payment' &&
+    input.monthlyPaymentSource === 'manual' &&
+    safeNumber(input.monthlyPayment) > 0;
+
+  if (eligible) {
+    const tryInput = runSchedule(input, safeNumber(input.monthlyPayment));
+    if (tryInput.amortized) {
+      return {
+        points: tryInput.points,
+        payoffYear: tryInput.payoffYear,
+        fixedPeriodEndYear: tryInput.fixedPeriodEndYear,
+        paymentBasis: 'input',
+        inputPaymentFellBack: false,
+      };
+    }
+    // 入力額では期間内に完済しない概算 → 参考ベースへフォールバック
+    const ref = runSchedule(input, null);
+    return {
+      points: ref.points,
+      payoffYear: ref.payoffYear,
+      fixedPeriodEndYear: ref.fixedPeriodEndYear,
+      paymentBasis: 'reference',
+      inputPaymentFellBack: true,
+    };
+  }
+
+  const ref = runSchedule(input, null);
+  return {
+    points: ref.points,
+    payoffYear: ref.payoffYear,
+    fixedPeriodEndYear: ref.fixedPeriodEndYear,
+    paymentBasis: 'reference',
+    inputPaymentFellBack: false,
+  };
 }
 
 /**

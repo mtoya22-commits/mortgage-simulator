@@ -172,6 +172,14 @@ export function ResultScreen() {
             {t.balanceChart.lead}
           </p>
           <BalanceChart schedule={schedule} />
+          <p className="muted panel__note">
+            {schedule.paymentBasis === 'input'
+              ? t.balanceChart.basisInput
+              : t.balanceChart.basisReference}
+          </p>
+          {schedule.inputPaymentFellBack && (
+            <p className="muted panel__note">{t.balanceChart.basisFallback}</p>
+          )}
           <p className="muted panel__note">{t.balanceChart.note}</p>
           {safeNumber(input.bonusAnnual) > 0 && (
             <p className="muted panel__note">{t.balanceChart.bonusNote}</p>

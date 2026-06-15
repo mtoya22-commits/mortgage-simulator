@@ -402,6 +402,57 @@ describe('buildAmortizationSchedule', () => {
   });
 });
 
+describe('buildAmortizationSchedule の返済額ベース判定', () => {
+  it('自動計算のまま（source=auto）は参考ベース', () => {
+    const s = buildAmortizationSchedule(makeInput({ monthlyPaymentSource: 'auto' }));
+    expect(s.paymentBasis).toBe('reference');
+    expect(s.inputPaymentFellBack).toBe(false);
+  });
+
+  it('元利均等 + 手動修正で参考額より多い額は入力額ベース（完済が前倒し）', () => {
+    const s = buildAmortizationSchedule(
+      makeInput({
+        repayMethod: 'equal-payment',
+        monthlyPaymentSource: 'manual',
+        monthlyPayment: 130_000,
+        bonusAnnual: 0,
+      }),
+    );
+    expect(s.paymentBasis).toBe('input');
+    expect(s.inputPaymentFellBack).toBe(false);
+    expect(s.payoffYear).not.toBeNull();
+    expect(s.payoffYear!).toBeLessThan(25);
+    // 残高は負にならず完済後 0
+    expect(s.points.every((p) => p.balance >= 0)).toBe(true);
+    expect(s.points[s.points.length - 1].balance).toBe(0);
+  });
+
+  it('元利均等 + 手動修正で参考額より少ない額は参考ベースへフォールバック', () => {
+    const s = buildAmortizationSchedule(
+      makeInput({
+        repayMethod: 'equal-payment',
+        monthlyPaymentSource: 'manual',
+        monthlyPayment: 70_000, // 参考額（約11万円）より小さく、期間内に完済しない
+        bonusAnnual: 0,
+      }),
+    );
+    expect(s.paymentBasis).toBe('reference');
+    expect(s.inputPaymentFellBack).toBe(true);
+  });
+
+  it('元金均等は手動修正でも常に参考ベース', () => {
+    const s = buildAmortizationSchedule(
+      makeInput({
+        repayMethod: 'equal-principal',
+        monthlyPaymentSource: 'manual',
+        monthlyPayment: 130_000,
+      }),
+    );
+    expect(s.paymentBasis).toBe('reference');
+    expect(s.inputPaymentFellBack).toBe(false);
+  });
+});
+
 describe('fixedPeriodImpact / fixedPeriodExceedsTerm', () => {
   it('固定期間終了後の想定金利が未入力なら configured:false', () => {
     const impact = fixedPeriodImpact(
