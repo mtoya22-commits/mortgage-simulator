@@ -3,7 +3,7 @@
 // 刻み幅は 0.05 / 0.1 / 0.5%（既定 0.1）。0.05 を含むので 0.25% にも到達できる。
 
 import { useMemo, useState } from 'react';
-import { rateScenarioAt, equalInstallmentMonthly, safeNumber } from '../../lib/mortgage';
+import { rateScenarioAt, referenceMonthlyByMethod, safeNumber } from '../../lib/mortgage';
 import { yenPerMonth, yen, man, signedYen, signedMan, percent } from '../../lib/format';
 import { strings, RATE_STEPS } from '../../strings/ja';
 import type { MortgageInput } from '../../types/mortgage';
@@ -25,16 +25,21 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
   const reset = () => setRate(baseRate);
 
   const scenario = useMemo(
-    () => rateScenarioAt(input.balance, baseRate, input.remainingYears, rate),
-    [input.balance, baseRate, input.remainingYears, rate],
+    () => rateScenarioAt(input.balance, baseRate, input.remainingYears, rate, input.repayMethod),
+    [input.balance, baseRate, input.remainingYears, rate, input.repayMethod],
   );
 
   // 入力した毎月返済額との差（参考）。ユーザーの実額と概算のギャップを示す。
   const userMonthly = safeNumber(input.monthlyPayment);
   const vsUserMonthly = useMemo(() => {
-    const refAtRate = equalInstallmentMonthly(input.balance, rate, input.remainingYears);
+    const refAtRate = referenceMonthlyByMethod(
+      input.balance,
+      rate,
+      input.remainingYears,
+      input.repayMethod,
+    );
     return userMonthly > 0 ? refAtRate - userMonthly : null;
-  }, [input.balance, rate, input.remainingYears, userMonthly]);
+  }, [input.balance, rate, input.remainingYears, input.repayMethod, userMonthly]);
 
   const t = strings.result.rateAdjust;
   const changed = round(rate) !== round(baseRate);
@@ -135,6 +140,7 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
         参考月返済額 {yen(scenario.referenceMonthly)} ／ 残り総額への影響 約{' '}
         {man(scenario.remainingTotalIncrease)}
       </p>
+      <p className="muted adjust__note">{t.note}</p>
     </section>
   );
 }

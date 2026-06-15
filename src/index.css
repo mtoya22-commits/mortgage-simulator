@@ -413,6 +413,135 @@
 }
 
 /* =========================================================================
+   毎月返済額カード（auto / manual バッジ・目安に戻す）
+   ========================================================================= */
+.monthly-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tag {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.tag--auto {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--accent);
+}
+.tag--manual {
+  background: var(--surface);
+  border-color: var(--brass);
+  color: var(--brass);
+}
+.link-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--link);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+/* =========================================================================
+   結果画面の汎用パネル（毎月返済額確認・グラフ・固定期間）
+   ========================================================================= */
+.panel {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel__note {
+  margin: 0;
+  font-size: 0.78rem;
+}
+.panel__unset {
+  margin: 0;
+  font-weight: 600;
+  color: var(--band-needs);
+}
+
+/* ラベル + 値の行（毎月返済額確認・固定期間） */
+.kv {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kv__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kv__row dt {
+  font-size: 0.85rem;
+}
+.kv__row dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================================
+   残高推移グラフ（自作SVG）
+   ========================================================================= */
+.chart {
+  margin: 0;
+}
+.chart__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart__area {
+  fill: var(--accent-soft);
+  opacity: 0.7;
+}
+.chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart__payoff-dot {
+  fill: var(--accent-strong);
+}
+.chart__marker--fixed {
+  stroke: var(--brass);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.chart__ylabel,
+.chart__xlabel {
+  fill: var(--muted);
+  font-size: 8px;
+}
+.chart__markerlabel {
+  fill: var(--brass);
+  font-size: 8px;
+}
+
+.adjust__note {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+/* =========================================================================
    PC 幅でも崩れないように（.app が max-width:720px で中央寄せ済み）。
    主指標を読みやすく、ステッパーボタンの間延びを防ぐ程度の微調整のみ。
    ========================================================================= */

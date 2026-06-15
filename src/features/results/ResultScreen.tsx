@@ -1,31 +1,46 @@
-// 結果画面。Hero（主指標）→ 金利ステッパー → プリセット参考影響 →
-// 入力条件の確認 → 注記 → 次アクション。モーダルは使わず <details> で展開する。
+// 結果画面。Hero（主指標）→ 毎月返済額の確認 → 金利ステッパー → 金利上昇テーブル →
+// 残高推移グラフ → 固定期間終了後シミュレーション → 入力条件 → 注記 → 次アクション。
+// 長くなりすぎないよう詳細は collapsible / <details> で折りたたむ（モーダル不使用）。
 
 import { useMemo, useState } from 'react';
 import { useMortgageStore } from '../../store/useMortgageStore';
 import { strings, RATE_PRESETS, LIFE_PLAN_LAB_URL } from '../../strings/ja';
-import { computeResult, rateScenario, safeNumber } from '../../lib/mortgage';
+import {
+  computeResult,
+  rateScenario,
+  buildAmortizationSchedule,
+  fixedPeriodImpact,
+  safeNumber,
+} from '../../lib/mortgage';
 import { saveMortgage } from '../../lib/storage';
 import { yen, man, yenPerMonth, signedYen, signedMan, percent } from '../../lib/format';
 import { RateAdjustCard } from './RateAdjustCard';
+import { BalanceChart } from './BalanceChart';
 
 export function ResultScreen() {
   const { input, goTo } = useMortgageStore();
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'failed'>('idle');
 
   const result = useMemo(() => computeResult(input), [input]);
+  const schedule = useMemo(() => buildAmortizationSchedule(input), [input]);
+  const impact = useMemo(() => fixedPeriodImpact(input), [input]);
   const baseRate = safeNumber(input.rate);
-  const userMonthly = safeNumber(input.monthlyPayment);
+  const inputMonthly = safeNumber(input.monthlyPayment);
+  const isEqualPrincipal = input.repayMethod === 'equal-principal';
+  const isFixedPeriod = input.rateType === 'fixed-period';
 
   const presets = useMemo(
     () =>
       RATE_PRESETS.map((delta) =>
-        rateScenario(input.balance, baseRate, input.remainingYears, delta),
+        rateScenario(input.balance, baseRate, input.remainingYears, delta, input.repayMethod),
       ),
-    [input.balance, baseRate, input.remainingYears],
+    [input.balance, baseRate, input.remainingYears, input.repayMethod],
   );
 
   const t = strings.result;
+  const ms = t.monthlySection;
+  // 入力額との差 = 入力した毎月返済額 − 参考月返済額
+  const monthlyDiff = inputMonthly > 0 ? inputMonthly - result.referenceMonthly : null;
 
   const handleSave = () => {
     setSaveState(saveMortgage(input) ? 'saved' : 'failed');
@@ -64,6 +79,34 @@ export function ResultScreen() {
             <span className="metric__value">{yenPerMonth(result.referenceMonthly)}</span>
             <span className="metric__caption muted">{t.metrics.referenceMonthly.caption}</span>
           </div>
+        </section>
+
+        {/* 毎月返済額の確認（参考 / 入力 / 差） */}
+        <section className="collapsible collapsible--card panel">
+          <h2 className="section-heading" style={{ marginTop: 0 }}>
+            {ms.heading}
+          </h2>
+          <dl className="kv">
+            {isEqualPrincipal ? (
+              <>
+                <KV label={ms.referenceFirstLabel} value={yenPerMonth(result.referenceMonthlyFirst)} />
+                <KV label={ms.referenceAverageLabel} value={yenPerMonth(result.referenceMonthlyAverage)} />
+              </>
+            ) : (
+              <KV label={ms.referenceLabel} value={yenPerMonth(result.referenceMonthly)} />
+            )}
+            <KV
+              label={ms.inputLabel}
+              value={
+                inputMonthly > 0 ? `${yenPerMonth(inputMonthly)}（${input.monthlyPaymentSource === 'manual' ? ms.manualTag : ms.autoTag}）` : '—'
+              }
+            />
+            {monthlyDiff != null && (
+              <KV label={ms.diffLabel} value={`${signedYen(monthlyDiff)} / 月`} emphasize />
+            )}
+          </dl>
+          {isEqualPrincipal && <p className="muted panel__note">{ms.equalPrincipalNote}</p>}
+          <p className="muted panel__note">{ms.note}</p>
         </section>
 
         {/* What-if を上に: 金利ステッパー */}
@@ -112,13 +155,63 @@ export function ResultScreen() {
               </div>
             ))}
           </div>
-          {userMonthly > 0 && (
+          {inputMonthly > 0 && (
             <p className="muted preset-note">
-              ※ 参考月返済額は元利均等の概算です。入力した毎月返済額（{yenPerMonth(userMonthly)}）とは
+              ※ 参考月返済額は概算です。入力した毎月返済額（{yenPerMonth(inputMonthly)}）とは
               前提により差が出ることがあります。
             </p>
           )}
         </section>
+
+        {/* 1年ごとのローン残高推移グラフ */}
+        <section className="collapsible collapsible--card panel">
+          <h2 className="section-heading" style={{ marginTop: 0 }}>
+            {t.balanceChart.heading}
+          </h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            {t.balanceChart.lead}
+          </p>
+          <BalanceChart schedule={schedule} />
+          <p className="muted panel__note">{t.balanceChart.note}</p>
+          {safeNumber(input.bonusAnnual) > 0 && (
+            <p className="muted panel__note">{t.balanceChart.bonusNote}</p>
+          )}
+        </section>
+
+        {/* 固定期間終了後シミュレーション（固定期間選択型のみ） */}
+        {isFixedPeriod && (
+          <section className="collapsible collapsible--card panel">
+            <h2 className="section-heading" style={{ marginTop: 0 }}>
+              {t.fixedPeriod.heading}
+            </h2>
+            {impact.configured ? (
+              <>
+                <dl className="kv">
+                  <KV label={t.fixedPeriod.endAge} value={`${Math.round(impact.endAge)} 歳`} />
+                  <KV label={t.fixedPeriod.balanceAtEnd} value={man(impact.balanceAtEnd)} />
+                  <KV label={t.fixedPeriod.postRate} value={percent(impact.postRate)} />
+                  <KV label={t.fixedPeriod.postMonthly} value={yenPerMonth(impact.postMonthly)} />
+                  <KV
+                    label={t.fixedPeriod.monthlyIncrease}
+                    value={`${signedYen(impact.monthlyIncrease)} / 月`}
+                    emphasize
+                  />
+                  <KV
+                    label={t.fixedPeriod.annualIncrease}
+                    value={`${signedYen(impact.annualIncrease)} / 年`}
+                    emphasize
+                  />
+                </dl>
+                <p className="muted panel__note">{t.fixedPeriod.note}</p>
+              </>
+            ) : (
+              <>
+                <p className="panel__unset">{t.fixedPeriod.unsetLabel}</p>
+                <p className="muted panel__note">{t.fixedPeriod.unsetHint}</p>
+              </>
+            )}
+          </section>
+        )}
 
         {/* 入力条件の確認 */}
         <details className="collapsible collapsible--muted">
@@ -132,10 +225,25 @@ export function ResultScreen() {
               <Row label={strings.input.fields.balance.label} value={`${yen(safeNumber(input.balance))}（約 ${man(safeNumber(input.balance))}）`} />
               <Row label={strings.input.fields.rate.label} value={percent(baseRate)} />
               <Row label={strings.input.fields.rateType.label} value={strings.rateTypeLabels[input.rateType]} />
-              <Row label={strings.input.fields.monthlyPayment.label} value={yenPerMonth(safeNumber(input.monthlyPayment))} />
-              <Row label={strings.input.fields.bonusAnnual.label} value={yen(safeNumber(input.bonusAnnual))} />
+              {isFixedPeriod && (
+                <>
+                  <Row
+                    label={strings.input.fields.fixedPeriodRemainingYears.label}
+                    value={`${safeNumber(input.fixedPeriodRemainingYears)} 年`}
+                  />
+                  <Row
+                    label={strings.input.fields.postFixedRate.label}
+                    value={input.postFixedRate != null ? percent(safeNumber(input.postFixedRate)) : '未設定'}
+                  />
+                </>
+              )}
               <Row label={strings.input.fields.remainingYears.label} value={`${safeNumber(input.remainingYears)} 年`} />
               <Row label={strings.input.fields.repayMethod.label} value={strings.repayMethodLabels[input.repayMethod]} />
+              <Row label={strings.input.fields.bonusAnnual.label} value={yen(safeNumber(input.bonusAnnual))} />
+              <Row
+                label={strings.input.fields.monthlyPayment.label}
+                value={`${yenPerMonth(inputMonthly)}（${input.monthlyPaymentSource === 'manual' ? ms.manualTag : ms.autoTag}）`}
+              />
             </dl>
           </div>
         </details>
@@ -181,6 +289,15 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="condition-row">
       <dt className="muted">{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+function KV({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+  return (
+    <div className="kv__row">
+      <dt className="muted">{label}</dt>
+      <dd className={emphasize ? 'is-up' : ''}>{value}</dd>
     </div>
   );
 }
