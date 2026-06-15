@@ -81,6 +81,18 @@ export interface AmortizationSchedule {
   inputPaymentFellBack: boolean;
 }
 
+/** 入力した毎月返済額と参考月返済額の乖離 */
+export interface MonthlyDivergence {
+  /** 計算した参考月返済額（返済方式準拠） */
+  referenceMonthly: number;
+  /** 入力した毎月返済額 */
+  inputMonthly: number;
+  /** 差（入力 − 参考） */
+  diff: number;
+  /** 注意表示を出すべき大きな乖離か */
+  significant: boolean;
+}
+
 /** 固定期間選択型: 固定期間終了後の参考影響 */
 export interface FixedPeriodImpact {
   /** 終了後想定金利が入力済みで試算できたか */

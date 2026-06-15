@@ -1,9 +1,10 @@
 // 「金利を少し動かして見る」カード。試算用の一時金利を ［−］［＋］ で動かし、
-// 参考月返済額・毎月/年間の負担増・残り返済総額への影響をその場で再計算する。
-// 刻み幅は 0.05 / 0.1 / 0.5%（既定 0.1）。0.05 を含むので 0.25% にも到達できる。
+// 月返済額・毎月/年間の負担増・残り返済総額への影響をその場で再計算する。
+// 刻み幅は 0.005 / 0.01 / 0.05 / 0.1%（既定 0.1）。
+// 月返済額の絶対値は、入力した毎月返済額がある場合はそれを起点に増加分を足して表示する。
 
 import { useMemo, useState } from 'react';
-import { rateScenarioAt, referenceMonthlyByMethod, safeNumber } from '../../lib/mortgage';
+import { rateScenarioAt, safeNumber } from '../../lib/mortgage';
 import { yenPerMonth, yen, man, signedYen, signedMan, percent } from '../../lib/format';
 import { strings, RATE_STEPS } from '../../strings/ja';
 import type { MortgageInput } from '../../types/mortgage';
@@ -29,19 +30,15 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
     [input.balance, baseRate, input.remainingYears, rate, input.repayMethod],
   );
 
-  // 入力した毎月返済額との差（参考）。ユーザーの実額と概算のギャップを示す。
-  const userMonthly = safeNumber(input.monthlyPayment);
-  const vsUserMonthly = useMemo(() => {
-    const refAtRate = referenceMonthlyByMethod(
-      input.balance,
-      rate,
-      input.remainingYears,
-      input.repayMethod,
-    );
-    return userMonthly > 0 ? refAtRate - userMonthly : null;
-  }, [input.balance, rate, input.remainingYears, input.repayMethod, userMonthly]);
-
   const t = strings.result.rateAdjust;
+
+  // 月返済額の絶対値: 入力した毎月返済額がある場合はそれを起点に、計算した増加分を足す。
+  // 入力が無い場合は計算した参考月返済額を表示する。増加幅自体は計算ベースのまま。
+  const userMonthly = safeNumber(input.monthlyPayment);
+  const displayMonthly =
+    userMonthly > 0 ? userMonthly + scenario.monthlyIncrease : scenario.referenceMonthly;
+  const monthlyLabel = userMonthly > 0 ? t.monthlyAnchored : t.referenceMonthly;
+
   const changed = round(rate) !== round(baseRate);
 
   return (
@@ -90,7 +87,7 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
               className={`choice adjust__step-choice${step === s ? ' choice--selected' : ''}`}
               onClick={() => setStep(s)}
             >
-              {percent(s, 2)}
+              {percent(s, 3)}
             </button>
           ))}
         </div>
@@ -98,8 +95,8 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
 
       <dl className="adjust__results">
         <div className="adjust__item">
-          <dt>{t.referenceMonthly}</dt>
-          <dd>{yenPerMonth(scenario.referenceMonthly)}</dd>
+          <dt>{monthlyLabel}</dt>
+          <dd>{yenPerMonth(displayMonthly)}</dd>
         </div>
         <div className="adjust__item">
           <dt>{t.monthlyIncrease}</dt>
@@ -121,12 +118,6 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
             {signedMan(scenario.remainingTotalIncrease)}
           </dd>
         </div>
-        {vsUserMonthly != null && (
-          <div className="adjust__item">
-            <dt>{t.vsUserMonthly}</dt>
-            <dd>{signedYen(vsUserMonthly)}</dd>
-          </div>
-        )}
       </dl>
 
       {changed && (
@@ -137,7 +128,7 @@ export function RateAdjustCard({ input }: RateAdjustCardProps) {
 
       <p className="muted adjust__hint">
         {/* 大きな桁は円と万円を併記して読みやすくする */}
-        参考月返済額 {yen(scenario.referenceMonthly)} ／ 残り総額への影響 約{' '}
+        月返済額（目安）{yen(displayMonthly)} ／ 残り総額への影響 約{' '}
         {man(scenario.remainingTotalIncrease)}
       </p>
       <p className="muted adjust__note">{t.note}</p>
