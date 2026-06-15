@@ -1,0 +1,423 @@
+/* shared-tokens を土台に、住宅ローンシミュレーター固有の最小追加だけをここに置く。
+   トークン / 共通クラス（.app/.screen/.btn/.choice/.collapsible/.bottom-nav/.fade-rise）は
+   shared-tokens.css 側を正とする。 */
+@import './styles/shared-tokens.css';
+
+/* =========================================================================
+   Hero（導入・結果の上端）。上質感は細い線で（DESIGN_HANDOFF.md 1章）。
+   ========================================================================= */
+.hero {
+  position: relative;
+  padding-top: 14px;
+}
+.hero::before {
+  /* 上端の 2px ブラスグラデーション（life-plan-lab の代表表現） */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  border-radius: 2px;
+}
+.hero__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--brass);
+}
+.hero__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.hero__lead {
+  margin: 8px 0 0;
+}
+
+/* =========================================================================
+   導入画面
+   ========================================================================= */
+.intro-list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.intro-list li {
+  font-size: 0.92rem;
+}
+.intro-note {
+  margin: 0;
+}
+.intro-start {
+  margin-top: 4px;
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+/* =========================================================================
+   入力画面
+   ========================================================================= */
+.step-head {
+  margin-bottom: 4px;
+}
+.step-head .hero__title {
+  font-size: 1.3rem;
+}
+
+.qcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qcard__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qcard__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.qcard__hint {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* 数値入力 */
+.numfield {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.numfield__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 11px 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.numfield__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.numfield__unit {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ？ヘルプ */
+.help {
+  position: relative;
+  display: inline-flex;
+}
+.help__btn {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.help__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.help__bubble {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  z-index: 30;
+  width: min(82vw, 280px);
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-raised);
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* 下部ナビの行 */
+.bottom-nav__row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.bottom-nav__row .btn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bottom-nav__primary {
+  flex: 1 1 auto;
+}
+
+/* =========================================================================
+   結果画面
+   ========================================================================= */
+.screen--result {
+  gap: 16px;
+  padding-bottom: calc(28px + min(env(safe-area-inset-bottom), 24px));
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric--primary {
+  grid-column: 1 / -1;
+  border-left: 3px solid var(--band-stable);
+}
+.metric--ref {
+  grid-column: 1 / -1;
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+.metric__label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.metric__value {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.metric--primary .metric__value {
+  font-size: 1.6rem;
+}
+.metric__caption {
+  font-size: 0.76rem;
+}
+
+/* 金利ステッパー（adjust） */
+.adjust {
+  /* collapsible だが常時開きで使うため summary は持たない */
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.adjust__head {
+  border-left: 3px solid var(--brass);
+  padding-left: 10px;
+}
+.adjust__lead {
+  margin: 0;
+  font-size: 0.84rem;
+}
+.adjust__stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.adjust__rate-label {
+  font-size: 0.82rem;
+}
+.adjust__rate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.adjust__step-btn {
+  width: 52px;
+  min-height: 48px;
+  font-size: 1.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.adjust__rate-value {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.adjust__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.adjust__steps-label {
+  font-size: 0.82rem;
+}
+.adjust__step-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding: 10px 8px;
+}
+.adjust__results {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.adjust__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adjust__item dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.adjust__item dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.adjust__reset {
+  align-self: flex-start;
+  padding: 8px 12px;
+}
+.adjust__hint {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+/* 負担増の強調はブラウン系で（赤は使わない） */
+.is-up {
+  color: var(--band-tough);
+}
+
+/* プリセット表 */
+.preset-table {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+.preset-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  align-items: baseline;
+}
+.preset-row:last-child {
+  border-bottom: none;
+}
+.preset-row--head {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.preset-row span {
+  font-variant-numeric: tabular-nums;
+}
+.preset-newrate {
+  display: block;
+  font-size: 0.72rem;
+}
+.preset-note {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+}
+
+/* 入力条件の確認 */
+.condition-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.condition-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.condition-row dt {
+  font-size: 0.85rem;
+}
+.condition-row dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+/* 次アクション */
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.result-actions .btn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.result-actions__link {
+  text-align: center;
+}
+.save-msg {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* =========================================================================
+   PC 幅でも崩れないように（.app が max-width:720px で中央寄せ済み）。
+   主指標を読みやすく、ステッパーボタンの間延びを防ぐ程度の微調整のみ。
+   ========================================================================= */
+@media (min-width: 560px) {
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
