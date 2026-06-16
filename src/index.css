@@ -413,6 +413,28 @@
 }
 
 /* =========================================================================
+   iframe 埋め込み時（<html data-embedded="true">）
+   入力画面を 100svh の内スクロールではなく自然高さにし、親ページ側スクロール
+   1 本にする。iframe は scrolling="no" + 受信高さで height 更新される前提なので、
+   下部ナビはコンテンツ末尾に普通に置けば隠れない（二重スクロール回避）。
+   単独表示（非 iframe）では従来の sticky ナビ挙動を維持する。
+   ========================================================================= */
+html[data-embedded='true'] .step-layout {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+html[data-embedded='true'] .step-content {
+  overflow: visible;
+  -webkit-overflow-scrolling: auto;
+}
+html[data-embedded='true'] .bottom-nav {
+  position: static;
+  backdrop-filter: none;
+  background: var(--surface);
+}
+
+/* =========================================================================
    毎月返済額カード（auto / manual バッジ・目安に戻す）
    ========================================================================= */
 .monthly-meta {

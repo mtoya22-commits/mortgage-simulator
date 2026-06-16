@@ -46,6 +46,13 @@ npm test         # 計算ロジックのテスト（vitest）
 }
 ```
 
+## WordPress への iframe 埋め込み（自動高さ）
+
+二重スクロールを避けるため、アプリはコンテンツ高さを親ページへ `postMessage`
+（`type: "lifeplanlab:resize"`）で送ります。親側は `scrolling="no"` の iframe を置き、
+受信した高さで `iframe.style.height` を更新します。貼り付けコードと仕組みは
+[`docs/EMBED.md`](./docs/EMBED.md) を参照してください。
+
 ## GitHub Pages 公開
 
 `.github/workflows/deploy-pages.yml` が `main` への push（または Actions の手動実行）で
