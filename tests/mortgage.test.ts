@@ -313,18 +313,25 @@ describe('元金均等の月返済額', () => {
 });
 
 describe('referenceMonthlyByMethod', () => {
-  it('返済方式に応じて関数を選ぶ', () => {
+  it('返済方式に応じて関数を選ぶ（元金均等は現在＝初回付近）', () => {
     const ep = referenceMonthlyByMethod(30_000_000, 0.925, 25, 'equal-payment');
     const epp = referenceMonthlyByMethod(30_000_000, 0.925, 25, 'equal-principal');
     expect(ep).toBeCloseTo(equalInstallmentMonthly(30_000_000, 0.925, 25), 6);
-    expect(epp).toBeCloseTo(equalPrincipalAverageMonthly(30_000_000, 0.925, 25), 6);
+    expect(epp).toBeCloseTo(equalPrincipalFirstMonthly(30_000_000, 0.925, 25), 6);
+  });
+
+  it('事例: 元金均等 残高31,500,000 / 31年 / 1.175% の現在額は約115,521円（平均ではない）', () => {
+    const ref = referenceMonthlyByMethod(31_500_000, 1.175, 31, 'equal-principal');
+    expect(Math.round(ref)).toBe(115_521);
+    // 生涯平均（約100,141円）は別物
+    expect(Math.round(equalPrincipalAverageMonthly(31_500_000, 1.175, 31))).toBe(100_141);
   });
 });
 
 describe('computeResult（返済方式）', () => {
-  it('元金均等では referenceMonthly=平均, First>Average', () => {
+  it('元金均等では referenceMonthly=初回付近（現在の額）, First>Average', () => {
     const r = computeResult(makeInput({ repayMethod: 'equal-principal' }));
-    expect(r.referenceMonthly).toBeCloseTo(r.referenceMonthlyAverage, 6);
+    expect(r.referenceMonthly).toBeCloseTo(r.referenceMonthlyFirst, 6);
     expect(r.referenceMonthlyFirst).toBeGreaterThan(r.referenceMonthlyAverage);
   });
 

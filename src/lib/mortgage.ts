@@ -120,8 +120,11 @@ export function equalPrincipalAverageMonthly(
 }
 
 /**
- * 返済方式準拠の参考月返済額。
- * 元利均等 → 元利均等概算、元金均等 → 平均月額（自動初期値・主指標に使用）。
+ * 返済方式準拠の参考月返済額（＝現在の毎月返済額の目安）。
+ * 元利均等 → 元利均等概算。
+ * 元金均等 → 初回付近（残高×月利＋毎月元金）＝今の残高に対する現在の返済額。
+ *   元金均等は返済が進むほど月額が下がるため、自動初期値・主指標には「現在の額」を使い、
+ *   生涯平均は別途 equalPrincipalAverageMonthly で参考表示する。
  */
 export function referenceMonthlyByMethod(
   balance: number | null | undefined,
@@ -130,7 +133,7 @@ export function referenceMonthlyByMethod(
   method: RepayMethod,
 ): number {
   return method === 'equal-principal'
-    ? equalPrincipalAverageMonthly(balance, annualRatePct, remainingYears)
+    ? equalPrincipalFirstMonthly(balance, annualRatePct, remainingYears)
     : equalInstallmentMonthly(balance, annualRatePct, remainingYears);
 }
 
@@ -177,7 +180,7 @@ export function computeResult(input: MortgageInput): MortgageResult {
     payoffAge: payoffAge(input.currentAge, input.remainingYears),
     remainingTotal: remainingTotal(annual, input.remainingYears),
     referenceMonthly:
-      input.repayMethod === 'equal-principal' ? average : installment,
+      input.repayMethod === 'equal-principal' ? first : installment,
     referenceMonthlyFirst: input.repayMethod === 'equal-principal' ? first : installment,
     referenceMonthlyAverage: input.repayMethod === 'equal-principal' ? average : installment,
   };
