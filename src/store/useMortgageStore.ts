@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { MortgageInput } from '../types/mortgage';
 import { referenceMonthlyByMethod } from '../lib/mortgage';
+import { saveMortgageDraft } from '../lib/storage';
 
 export type Phase = 'intro' | 'input' | 'result';
 
@@ -84,39 +85,40 @@ export const useMortgageStore = create<MortgageStore>((set) => ({
         }
       }
 
+      saveMortgageDraft(next); // 入力途中の下書きを自動保存（確定キーとは別）
       return { input: next };
     }),
 
   setMonthlyPayment: (value) =>
     set((state) => {
+      let next: MortgageInput;
       if (value == null) {
         // 空にしたら自動計算へ戻す
         const auto = state.input.calculatedMonthlyPayment ?? calcAutoMonthly(state.input);
-        return {
-          input: {
-            ...state.input,
-            monthlyPaymentSource: 'auto',
-            calculatedMonthlyPayment: auto,
-            monthlyPayment: auto,
-          },
+        next = {
+          ...state.input,
+          monthlyPaymentSource: 'auto',
+          calculatedMonthlyPayment: auto,
+          monthlyPayment: auto,
         };
+      } else {
+        next = { ...state.input, monthlyPayment: value, monthlyPaymentSource: 'manual' };
       }
-      return {
-        input: { ...state.input, monthlyPayment: value, monthlyPaymentSource: 'manual' },
-      };
+      saveMortgageDraft(next);
+      return { input: next };
     }),
 
   useAutoMonthly: () =>
     set((state) => {
       const auto = calcAutoMonthly(state.input);
-      return {
-        input: {
-          ...state.input,
-          monthlyPaymentSource: 'auto',
-          calculatedMonthlyPayment: auto,
-          monthlyPayment: auto,
-        },
+      const next: MortgageInput = {
+        ...state.input,
+        monthlyPaymentSource: 'auto',
+        calculatedMonthlyPayment: auto,
+        monthlyPayment: auto,
       };
+      saveMortgageDraft(next);
+      return { input: next };
     }),
 
   reset: () => set({ phase: 'intro', input: initialInput }),

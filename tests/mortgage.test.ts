@@ -17,7 +17,6 @@ import {
   isSignificantMonthlyDivergence,
   monthlyPaymentDivergence,
 } from '../src/lib/mortgage';
-import { buildSavedMortgage, saveMortgage, STORAGE_KEY } from '../src/lib/storage';
 import { useMortgageStore, initialInput } from '../src/store/useMortgageStore';
 import type { MortgageInput } from '../src/types/mortgage';
 
@@ -193,103 +192,6 @@ describe('rateScenarioAt', () => {
     const by = rateScenario(30_000_000, 0.925, 25, 1.0);
     expect(at.referenceMonthly).toBeCloseTo(by.referenceMonthly, 6);
     expect(at.monthlyIncrease).toBeCloseTo(by.monthlyIncrease, 6);
-  });
-});
-
-describe('buildSavedMortgage', () => {
-  it('localStorage 保存用データが期待する形になる', () => {
-    const saved = buildSavedMortgage(baseInput, '2026-06-15T00:00:00.000Z');
-    expect(saved).toEqual({
-      version: 1,
-      source: 'mortgage-simulator',
-      savedAt: '2026-06-15T00:00:00.000Z',
-      mortgage: {
-        balance: 30_000_000,
-        monthlyPayment: 85_000,
-        calculatedMonthlyPayment: 96_261,
-        monthlyPaymentSource: 'auto',
-        bonusAnnual: 200_000,
-        remainingYears: 25,
-        rate: 0.925,
-        rateType: 'variable',
-        repayMethod: 'equal-payment',
-      },
-    });
-    // 変動金利では固定期間 2 項目は保存に含めない
-    expect('fixedPeriodRemainingYears' in saved.mortgage).toBe(false);
-    expect('postFixedRate' in saved.mortgage).toBe(false);
-  });
-
-  it('固定期間選択型では固定期間 2 項目が保存される', () => {
-    const saved = buildSavedMortgage(
-      makeInput({
-        rateType: 'fixed-period',
-        fixedPeriodRemainingYears: 7,
-        postFixedRate: 1.5,
-      }),
-      '2026-06-15T00:00:00.000Z',
-    );
-    expect(saved.mortgage.fixedPeriodRemainingYears).toBe(7);
-    expect(saved.mortgage.postFixedRate).toBe(1.5);
-    expect(saved.mortgage.rateType).toBe('fixed-period');
-  });
-
-  it('monthlyPaymentSource が manual のまま保存される', () => {
-    const saved = buildSavedMortgage(
-      makeInput({ monthlyPayment: 110_000, monthlyPaymentSource: 'manual' }),
-      '2026-06-15T00:00:00.000Z',
-    );
-    expect(saved.mortgage.monthlyPayment).toBe(110_000);
-    expect(saved.mortgage.monthlyPaymentSource).toBe('manual');
-  });
-
-  it('未入力（null）は 0 に正規化される', () => {
-    const saved = buildSavedMortgage(
-      { ...baseInput, balance: null, monthlyPayment: null, rate: null },
-      '2026-06-15T00:00:00.000Z',
-    );
-    expect(saved.mortgage.balance).toBe(0);
-    expect(saved.mortgage.monthlyPayment).toBe(0);
-    expect(saved.mortgage.rate).toBe(0);
-  });
-});
-
-describe('saveMortgage (localStorage)', () => {
-  beforeEach(() => {
-    // jsdom が無くても動くよう、最小のスタブを用意する
-    const store: Record<string, string> = {};
-    (globalThis as unknown as { localStorage: Storage }).localStorage = {
-      getItem: (k: string) => (k in store ? store[k] : null),
-      setItem: (k: string, v: string) => {
-        store[k] = v;
-      },
-      removeItem: (k: string) => {
-        delete store[k];
-      },
-      clear: () => {
-        for (const k of Object.keys(store)) delete store[k];
-      },
-      key: (i: number) => Object.keys(store)[i] ?? null,
-      get length() {
-        return Object.keys(store).length;
-      },
-    } as Storage;
-    (globalThis as unknown as { window: { localStorage: Storage } }).window = {
-      localStorage: (globalThis as unknown as { localStorage: Storage }).localStorage,
-    };
-  });
-
-  it('保存に成功し、キーと中身が読み戻せる', () => {
-    expect(saveMortgage(baseInput)).toBe(true);
-    const raw = (globalThis as unknown as { localStorage: Storage }).localStorage.getItem(
-      STORAGE_KEY,
-    );
-    expect(raw).not.toBeNull();
-    const parsed = JSON.parse(raw as string);
-    expect(parsed.source).toBe('mortgage-simulator');
-    expect(parsed.version).toBe(1);
-    expect(parsed.mortgage.balance).toBe(30_000_000);
-    expect(typeof parsed.savedAt).toBe('string');
   });
 });
 

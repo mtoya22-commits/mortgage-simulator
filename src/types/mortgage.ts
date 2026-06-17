@@ -130,27 +130,56 @@ export interface RateScenario {
   remainingTotalIncrease: number;
 }
 
-/** localStorage 保存形式（総合版へ引き継ぐためのスキーマ） */
-export interface SavedMortgage {
-  version: 1;
-  source: 'mortgage-simulator';
-  savedAt: string; // ISO 文字列
-  mortgage: {
-    balance: number;
-    /** 生活設計へ反映する最終的な毎月返済額 */
-    monthlyPayment: number;
-    /** 残高・金利・残り年数から計算した参考月返済額 */
-    calculatedMonthlyPayment?: number;
-    /** 自動計算値そのままか手動修正かの区別 */
-    monthlyPaymentSource: MonthlyPaymentSource;
-    bonusAnnual: number;
-    remainingYears: number;
-    rate: number;
-    rateType: RateType;
-    /** 固定期間選択型のみ設定 */
-    fixedPeriodRemainingYears?: number;
-    /** 固定期間選択型のみ設定 */
-    postFixedRate?: number;
-    repayMethod: RepayMethod;
-  };
+/**
+ * 総合版へ反映する条件の選択元。
+ * currentPlan=現在の返済条件 / rateAdjusted=金利変更シナリオ / fixedPeriodScenario=固定期間終了後シナリオ。
+ */
+export type MortgageSource = 'currentPlan' | 'rateAdjusted' | 'fixedPeriodScenario';
+
+/** 保存ペイロード用の返済方式表記（総合版が読む語彙）。 */
+export type PayloadRepaymentMethod = 'equalPayment' | 'equalPrincipal' | 'unknown';
+
+/** 保存ペイロード用の金利タイプ表記（総合版が読む語彙）。 */
+export type PayloadRateType = 'variable' | 'fixed' | 'fixedPeriod' | 'unknown';
+
+/**
+ * localStorage `lifePlanLab:mortgage` の確定データ。
+ * 総合版（life-plan-lab）が読み取る、生活設計用の住宅ローン条件。
+ * 金額は円、金利は % 表記、年数は年で統一する。
+ */
+export interface MortgagePayload {
+  /** 総合版へ反映する毎月返済額（円/月） */
+  selectedMonthlyPaymentYen: number;
+  /** 年間返済額（円/年）＝ selectedMonthly × 12 + ボーナス年額 */
+  selectedAnnualPaymentYen: number;
+  /** どの条件を選んだか */
+  selectedSource: MortgageSource;
+  /** 住宅ローン残高（円） */
+  balanceYen: number;
+  /** 現在金利（% 表記。例 0.925） */
+  interestRate: number;
+  /** 残り返済年数（年） */
+  remainingYears: number;
+  /** 返済方式 */
+  repaymentMethod: PayloadRepaymentMethod;
+  /** 現在の毎月返済額（円/月） */
+  monthlyPaymentYen: number;
+  /** ボーナス返済年額（円/年） */
+  bonusAnnualYen?: number;
+  /** 金利タイプ */
+  rateType?: PayloadRateType;
+  /** 固定期間の残り年数（固定期間選択型のみ） */
+  fixedPeriodRemainingYears?: number;
+  /** 固定期間終了後の想定金利（固定期間選択型のみ, % 表記） */
+  afterFixedRate?: number;
+  /** 金利調整や固定期間終了後などの試算月返済額（円/月） */
+  scenarioMonthlyPaymentYen?: number;
+  /** 試算に使った金利（% 表記） */
+  scenarioInterestRate?: number;
+  /** 試算の表示名 */
+  scenarioLabel?: string;
+  /** 保存時刻（ISO 文字列） */
+  savedAt: string;
+  /** スキーマ版数 */
+  version: number;
 }

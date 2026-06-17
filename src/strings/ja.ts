@@ -1,7 +1,7 @@
 // UI 文言の一元管理。煽らない・止めない・整理する（DESIGN_HANDOFF.md 2章）。
 // 「破綻」「危険」など不安を煽る語、借換/繰上/金利選択を推奨する語は使わない。
 
-import type { RateType, RepayMethod } from '../types/mortgage';
+import type { RateType, RepayMethod, MortgageSource } from '../types/mortgage';
 
 /** 総合版（人生全体の資産推移）への遷移先。MVP では仮 URL。 */
 export const LIFE_PLAN_LAB_URL = 'https://life-plan-lab.example.com/';
@@ -221,12 +221,37 @@ export const strings = {
 
     actions: {
       recalc: '条件を変えて再計算',
-      saveToLifePlan: 'この条件を生活設計に反映する',
-      viewLifePlan: '人生全体の資産推移で見る',
     },
-    saved: '生活設計に反映する条件を保存しました。総合版で読み込めるように保存しています。',
-    saveFailed: '保存できませんでした。ブラウザの設定（プライベートモードなど）をご確認ください。',
+
+    // 生活設計に反映する（総合版へ引き継ぐ）
+    reflect: {
+      heading: '生活設計に反映する',
+      lead: 'どの条件を総合版の生活設計に引き継ぐか選べます。総合版ではこの値を起点に、あとから手動で変更できます。',
+      current: {
+        button: '現在の返済条件を生活設計に反映する',
+        desc: '入力した現在の毎月返済額・残高・金利をそのまま使います。',
+      },
+      rateAdjusted: {
+        button: '金利変更シナリオを生活設計に反映する',
+        desc: '金利を動かした場合の参考返済額を使います。',
+      },
+      fixedPeriod: {
+        button: '固定期間終了後シナリオを生活設計に反映する',
+        desc: '固定期間終了後に想定した金利・返済額を使います。',
+      },
+      viewLifePlan: '人生全体の資産推移で見る',
+      viewLifePlanDesc: '選んだ条件を引き継いで、総合版で人生全体の資産推移を見ます。',
+      savedPrefix: '生活設計に反映する条件として保存しました：',
+      saveFailed: '保存できませんでした。ブラウザの設定（プライベートモードなど）をご確認ください。',
+    },
   },
+
+  /** source の表示テキスト（総合版とも共通の語彙）。 */
+  mortgageSourceLabels: {
+    currentPlan: '現在の返済条件',
+    rateAdjusted: '金利変更シナリオ',
+    fixedPeriodScenario: '固定期間終了後シナリオ',
+  } as Record<MortgageSource, string>,
 
   rateTypeLabels: {
     variable: '変動',
