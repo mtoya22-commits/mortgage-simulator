@@ -491,6 +491,41 @@ html[data-embedded='true'] .bottom-nav {
   color: var(--band-needs);
 }
 
+/* 生活設計に反映する（総合版へ引き継ぐ）ボタン群 */
+.reflect__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reflect__item + .reflect__item {
+  margin-top: 4px;
+}
+.reflect__btn {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+.reflect__btn-label {
+  font-size: 0.9rem;
+}
+.reflect__btn-value {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+  font-size: 0.85rem;
+}
+.reflect__btn.is-active {
+  box-shadow: 0 0 0 2px var(--brass) inset;
+}
+.reflect__desc {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
 /* 注意表示（赤は使わず、落ち着いたブラス/ブラウンで知らせる） */
 .notice {
   margin: 0;

@@ -11,19 +11,21 @@ import type { MortgageInput } from '../../types/mortgage';
 
 interface RateAdjustCardProps {
   input: MortgageInput;
+  /** 試算用の一時金利（ResultScreen が保持し、反映ボタンと共有する） */
+  rate: number;
+  onRateChange: (rate: number) => void;
 }
 
 const RATE_MAX = 20; // 試算上の上限（%）。極端な値での暴走を防ぐ。
 
-export function RateAdjustCard({ input }: RateAdjustCardProps) {
+export function RateAdjustCard({ input, rate, onRateChange }: RateAdjustCardProps) {
   const baseRate = safeNumber(input.rate);
   const [step, setStep] = useState<number>(0.1);
-  const [rate, setRate] = useState<number>(baseRate);
 
   const round = (v: number) => Math.round(v * 1000) / 1000; // 浮動小数の誤差を抑える
-  const dec = () => setRate((r) => round(Math.max(0, r - step)));
-  const inc = () => setRate((r) => round(Math.min(RATE_MAX, r + step)));
-  const reset = () => setRate(baseRate);
+  const dec = () => onRateChange(round(Math.max(0, rate - step)));
+  const inc = () => onRateChange(round(Math.min(RATE_MAX, rate + step)));
+  const reset = () => onRateChange(baseRate);
 
   const scenario = useMemo(
     () => rateScenarioAt(input.balance, baseRate, input.remainingYears, rate, input.repayMethod),

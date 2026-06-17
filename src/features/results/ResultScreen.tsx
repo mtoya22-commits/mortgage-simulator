@@ -8,25 +8,36 @@ import { strings, RATE_PRESETS, LIFE_PLAN_LAB_URL } from '../../strings/ja';
 import {
   computeResult,
   rateScenario,
+  rateScenarioAt,
   buildAmortizationSchedule,
   fixedPeriodImpact,
   monthlyPaymentDivergence,
   safeNumber,
 } from '../../lib/mortgage';
-import { saveMortgage } from '../../lib/storage';
+import {
+  buildMortgagePayload,
+  saveMortgagePayload,
+  type ScenarioSelection,
+} from '../../lib/storage';
+import { buildLifePlanUrl } from '../../lib/lifePlanUrl';
 import { yen, man, yenPerMonth, signedYen, signedMan, percent } from '../../lib/format';
+import type { MortgageSource } from '../../types/mortgage';
 import { RateAdjustCard } from './RateAdjustCard';
 import { BalanceChart } from './BalanceChart';
 
 export function ResultScreen() {
   const { input, goTo } = useMortgageStore();
-  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'failed'>('idle');
+  const baseRate = safeNumber(input.rate);
+  // 試算用の一時金利（ステッパーと「金利変更シナリオ反映」で共有）
+  const [trialRate, setTrialRate] = useState<number>(baseRate);
+  // どの条件を総合版へ反映するか（既定: 現在の返済条件）
+  const [selectedSource, setSelectedSource] = useState<MortgageSource>('currentPlan');
+  const [saveState, setSaveState] = useState<{ source: MortgageSource } | 'failed' | null>(null);
 
   const result = useMemo(() => computeResult(input), [input]);
   const schedule = useMemo(() => buildAmortizationSchedule(input), [input]);
   const impact = useMemo(() => fixedPeriodImpact(input), [input]);
   const divergence = useMemo(() => monthlyPaymentDivergence(input), [input]);
-  const baseRate = safeNumber(input.rate);
   const inputMonthly = safeNumber(input.monthlyPayment);
   const isEqualPrincipal = input.repayMethod === 'equal-principal';
   const isFixedPeriod = input.rateType === 'fixed-period';
@@ -41,11 +52,59 @@ export function ResultScreen() {
 
   const t = strings.result;
   const ms = t.monthlySection;
+  const rf = t.reflect;
+  const sourceLabels = strings.mortgageSourceLabels;
   // 入力額との差 = 入力した毎月返済額 − 参考月返済額
   const monthlyDiff = inputMonthly > 0 ? inputMonthly - result.referenceMonthly : null;
 
-  const handleSave = () => {
-    setSaveState(saveMortgage(input) ? 'saved' : 'failed');
+  // 現在の毎月返済額（入力があればそれ、無ければ参考額）
+  const currentMonthly = inputMonthly > 0 ? inputMonthly : result.referenceMonthly;
+  // 金利変更シナリオ: 試算金利での入力額起点の月返済額
+  const trialScenario = useMemo(
+    () => rateScenarioAt(input.balance, baseRate, input.remainingYears, trialRate, input.repayMethod),
+    [input.balance, baseRate, input.remainingYears, trialRate, input.repayMethod],
+  );
+  const rateAdjustedMonthly =
+    inputMonthly > 0 ? inputMonthly + trialScenario.monthlyIncrease : trialScenario.referenceMonthly;
+
+  const fixedConfigured = isFixedPeriod && impact.configured;
+
+  // 反映対象 source ごとの保存ペイロードを組み立てる
+  const selectionFor = (source: MortgageSource): ScenarioSelection => {
+    if (source === 'rateAdjusted') {
+      return {
+        source,
+        selectedMonthlyYen: rateAdjustedMonthly,
+        scenarioMonthlyYen: rateAdjustedMonthly,
+        scenarioRate: trialRate,
+        scenarioLabel: sourceLabels.rateAdjusted,
+      };
+    }
+    if (source === 'fixedPeriodScenario') {
+      return {
+        source,
+        selectedMonthlyYen: impact.postMonthly,
+        scenarioMonthlyYen: impact.postMonthly,
+        scenarioRate: impact.postRate,
+        scenarioLabel: sourceLabels.fixedPeriodScenario,
+      };
+    }
+    return { source: 'currentPlan', selectedMonthlyYen: currentMonthly };
+  };
+
+  const payloadFor = (source: MortgageSource) =>
+    buildMortgagePayload(input, selectionFor(source));
+
+  const handleReflect = (source: MortgageSource) => {
+    const ok = saveMortgagePayload(payloadFor(source));
+    setSelectedSource(source);
+    setSaveState(ok ? { source } : 'failed');
+  };
+
+  // 資産推移リンク: 選択中の source の条件を URL に付与し、押下時に localStorage も保存
+  const viewLifePlanUrl = buildLifePlanUrl(LIFE_PLAN_LAB_URL, payloadFor(selectedSource));
+  const handleViewLifePlan = () => {
+    saveMortgagePayload(payloadFor(selectedSource));
   };
 
   return (
@@ -113,7 +172,7 @@ export function ResultScreen() {
         </section>
 
         {/* What-if を上に: 金利ステッパー */}
-        <RateAdjustCard input={input} />
+        <RateAdjustCard input={input} rate={trialRate} onRateChange={setTrialRate} />
 
         {/* プリセットの金利上昇影響 */}
         <section className="collapsible collapsible--muted" style={{ padding: '14px 18px' }}>
@@ -274,24 +333,63 @@ export function ResultScreen() {
           </div>
         </details>
 
+        {/* 生活設計に反映する（総合版へ引き継ぐ） */}
+        <section className="collapsible collapsible--card panel reflect">
+          <h2 className="section-heading" style={{ marginTop: 0 }}>
+            {rf.heading}
+          </h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            {rf.lead}
+          </p>
+
+          <ReflectButton
+            label={rf.current.button}
+            desc={rf.current.desc}
+            value={yenPerMonth(currentMonthly)}
+            active={selectedSource === 'currentPlan'}
+            onClick={() => handleReflect('currentPlan')}
+          />
+          <ReflectButton
+            label={rf.rateAdjusted.button}
+            desc={`${rf.rateAdjusted.desc}（金利 ${percent(trialRate)} → ${yenPerMonth(rateAdjustedMonthly)}）`}
+            value={yenPerMonth(rateAdjustedMonthly)}
+            active={selectedSource === 'rateAdjusted'}
+            onClick={() => handleReflect('rateAdjusted')}
+          />
+          {fixedConfigured && (
+            <ReflectButton
+              label={rf.fixedPeriod.button}
+              desc={`${rf.fixedPeriod.desc}（金利 ${percent(impact.postRate)} → ${yenPerMonth(impact.postMonthly)}）`}
+              value={yenPerMonth(impact.postMonthly)}
+              active={selectedSource === 'fixedPeriodScenario'}
+              onClick={() => handleReflect('fixedPeriodScenario')}
+            />
+          )}
+
+          {saveState && saveState !== 'failed' && (
+            <p className="muted save-msg">
+              {rf.savedPrefix}
+              {sourceLabels[saveState.source]}
+            </p>
+          )}
+          {saveState === 'failed' && <p className="muted save-msg">{rf.saveFailed}</p>}
+        </section>
+
         {/* 次アクション */}
         <section className="result-actions">
           <button type="button" className="btn" onClick={() => goTo('input')}>
             {t.actions.recalc}
           </button>
-          <button type="button" className="btn btn--primary" onClick={handleSave}>
-            {t.actions.saveToLifePlan}
-          </button>
           <a
-            className="btn btn--recommended result-actions__link"
-            href={LIFE_PLAN_LAB_URL}
+            className="btn btn--primary result-actions__link"
+            href={viewLifePlanUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleViewLifePlan}
           >
-            {t.actions.viewLifePlan}
+            {rf.viewLifePlan}
           </a>
-          {saveState === 'saved' && <p className="muted save-msg">{t.saved}</p>}
-          {saveState === 'failed' && <p className="muted save-msg">{t.saveFailed}</p>}
+          <p className="muted save-msg">{rf.viewLifePlanDesc}</p>
         </section>
       </div>
     </div>
@@ -312,6 +410,34 @@ function KV({ label, value, emphasize }: { label: string; value: string; emphasi
     <div className="kv__row">
       <dt className="muted">{label}</dt>
       <dd className={emphasize ? 'is-up' : ''}>{value}</dd>
+    </div>
+  );
+}
+
+function ReflectButton({
+  label,
+  desc,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  desc: string;
+  value: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="reflect__item">
+      <button
+        type="button"
+        className={`btn btn--primary reflect__btn${active ? ' is-active' : ''}`}
+        onClick={onClick}
+      >
+        <span className="reflect__btn-label">{label}</span>
+        <span className="reflect__btn-value">{value}</span>
+      </button>
+      <p className="muted reflect__desc">{desc}</p>
     </div>
   );
 }
