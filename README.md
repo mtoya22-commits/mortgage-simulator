@@ -30,21 +30,37 @@ npm test         # 計算ロジックのテスト（vitest）
 
 ## 総合版への連携
 
-結果画面の「この条件を生活設計に反映する」で、`localStorage` キー `lifePlanLab:mortgage` に
-以下の形式で保存します（総合版が読み込める前提のスキーマ）。
+結果画面の「生活設計に反映する」で、反映対象（現在の返済条件／金利変更シナリオ／固定期間終了後シナリオ）
+を選んで `localStorage` キー `lifePlanLab:mortgage` に**確定データ**を保存します。金額は円、金利は % 表記、
+年数は年で統一しています（総合版が読み込む前提のスキーマ）。
 
 ```json
 {
-  "version": 1,
-  "source": "mortgage-simulator",
+  "selectedMonthlyPaymentYen": 95000,
+  "selectedAnnualPaymentYen": 1140000,
+  "selectedSource": "currentPlan",
+  "balanceYen": 32000000,
+  "interestRate": 0.925,
+  "remainingYears": 30,
+  "repaymentMethod": "equalPrincipal",
+  "monthlyPaymentYen": 95000,
+  "bonusAnnualYen": 0,
+  "rateType": "variable",
+  "scenarioMonthlyPaymentYen": 108000,
+  "scenarioInterestRate": 1.425,
+  "scenarioLabel": "金利変更シナリオ",
   "savedAt": "<ISO文字列>",
-  "mortgage": {
-    "balance": 0, "monthlyPayment": 0, "bonusAnnual": 0,
-    "remainingYears": 0, "rate": 0,
-    "rateType": "variable", "repayMethod": "equal-payment"
-  }
+  "version": 1
 }
 ```
+
+- **確定キー**: `lifePlanLab:mortgage`（総合版へ渡す確定データ）。
+- **下書きキー**: `lifePlanLab:mortgageDraft`（入力途中の自動保存。確定とは別物）。
+- 別 origin で localStorage を共有できない場合に備え、「人生全体の資産推移で見る」リンクには
+  `mortgageMonthlyPaymentYen` などの **`mortgage` プレフィックス付き URL パラメータ**も付与します
+  （単位は 円 / % / 年）。
+- 総合版側の受け取り実装（URL 優先・localStorage 補助・手動編集優先・バナー）は
+  [`docs/INTEGRATION.md`](./docs/INTEGRATION.md) のリファレンスを参照してください。
 
 ## WordPress への iframe 埋め込み（自動高さ）
 
