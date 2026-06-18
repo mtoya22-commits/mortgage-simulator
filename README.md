@@ -61,6 +61,9 @@ npm test         # 計算ロジックのテスト（vitest）
   （単位は 円 / % / 年）。
 - 総合版側の受け取り実装（URL 優先・localStorage 補助・手動編集優先・バナー）は
   [`docs/INTEGRATION.md`](./docs/INTEGRATION.md) のリファレンスを参照してください。
+- 「人生全体の資産推移で見る」の遷移先（総合版 URL）は本番デフォルト
+  `https://fire-lifeplan-lab.com/life-plan-simulator/`。環境変数 `VITE_LIFE_PLAN_LAB_URL`
+  を設定するとビルド時に上書きできます（未設定でも本番 URL を使用。example.com には遷移しません）。
 
 ## WordPress への iframe 埋め込み（自動高さ）
 

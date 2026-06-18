@@ -19,7 +19,7 @@ import {
   saveMortgagePayload,
   type ScenarioSelection,
 } from '../../lib/storage';
-import { buildLifePlanUrl } from '../../lib/lifePlanUrl';
+import { buildLifePlanUrl, isUsableLifePlanUrl } from '../../lib/lifePlanUrl';
 import { yen, man, yenPerMonth, signedYen, signedMan, percent } from '../../lib/format';
 import type { MortgageSource } from '../../types/mortgage';
 import { RateAdjustCard } from './RateAdjustCard';
@@ -101,7 +101,11 @@ export function ResultScreen() {
     setSaveState(ok ? { source } : 'failed');
   };
 
+  // 選択中の source が総合版へ引き継ぐ毎月返済額
+  const selectedMonthly = selectionFor(selectedSource).selectedMonthlyYen;
+
   // 資産推移リンク: 選択中の source の条件を URL に付与し、押下時に localStorage も保存
+  const urlUsable = isUsableLifePlanUrl(LIFE_PLAN_LAB_URL);
   const viewLifePlanUrl = buildLifePlanUrl(LIFE_PLAN_LAB_URL, payloadFor(selectedSource));
   const handleViewLifePlan = () => {
     saveMortgagePayload(payloadFor(selectedSource));
@@ -346,6 +350,7 @@ export function ResultScreen() {
             label={rf.current.button}
             desc={rf.current.desc}
             value={yenPerMonth(currentMonthly)}
+            badge={rf.selectedBadge}
             active={selectedSource === 'currentPlan'}
             onClick={() => handleReflect('currentPlan')}
           />
@@ -353,6 +358,7 @@ export function ResultScreen() {
             label={rf.rateAdjusted.button}
             desc={`${rf.rateAdjusted.desc}（金利 ${percent(trialRate)} → ${yenPerMonth(rateAdjustedMonthly)}）`}
             value={yenPerMonth(rateAdjustedMonthly)}
+            badge={rf.selectedBadge}
             active={selectedSource === 'rateAdjusted'}
             onClick={() => handleReflect('rateAdjusted')}
           />
@@ -361,13 +367,14 @@ export function ResultScreen() {
               label={rf.fixedPeriod.button}
               desc={`${rf.fixedPeriod.desc}（金利 ${percent(impact.postRate)} → ${yenPerMonth(impact.postMonthly)}）`}
               value={yenPerMonth(impact.postMonthly)}
+              badge={rf.selectedBadge}
               active={selectedSource === 'fixedPeriodScenario'}
               onClick={() => handleReflect('fixedPeriodScenario')}
             />
           )}
 
           {saveState && saveState !== 'failed' && (
-            <p className="muted save-msg">
+            <p className="muted save-msg" role="status">
               {rf.savedPrefix}
               {sourceLabels[saveState.source]}
             </p>
@@ -377,19 +384,38 @@ export function ResultScreen() {
 
         {/* 次アクション */}
         <section className="result-actions">
+          {/* 今どの条件・いくらを総合版へ渡すかの明示 */}
+          <div className="handoff-summary">
+            <p className="handoff-summary__line">
+              {rf.selectedConditionPrefix}
+              <strong>{sourceLabels[selectedSource]}</strong>
+            </p>
+            <p className="handoff-summary__line">
+              {rf.carryPrefix}
+              <strong>{yenPerMonth(selectedMonthly)}</strong>
+            </p>
+          </div>
+
           <button type="button" className="btn" onClick={() => goTo('input')}>
             {t.actions.recalc}
           </button>
-          <a
-            className="btn btn--primary result-actions__link"
-            href={viewLifePlanUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleViewLifePlan}
-          >
-            {rf.viewLifePlan}
-          </a>
-          <p className="muted save-msg">{rf.viewLifePlanDesc}</p>
+
+          {urlUsable ? (
+            <a
+              className="btn btn--primary result-actions__link"
+              href={viewLifePlanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleViewLifePlan}
+            >
+              {rf.viewLifePlan}
+            </a>
+          ) : (
+            <button type="button" className="btn result-actions__link" disabled>
+              {rf.viewLifePlan}
+            </button>
+          )}
+          <p className="muted save-msg">{urlUsable ? rf.viewLifePlanDesc : rf.urlUnset}</p>
         </section>
       </div>
     </div>
@@ -418,12 +444,14 @@ function ReflectButton({
   label,
   desc,
   value,
+  badge,
   active,
   onClick,
 }: {
   label: string;
   desc: string;
   value: string;
+  badge: string;
   active: boolean;
   onClick: () => void;
 }) {
@@ -431,11 +459,16 @@ function ReflectButton({
     <div className="reflect__item">
       <button
         type="button"
-        className={`btn btn--primary reflect__btn${active ? ' is-active' : ''}`}
+        className={`handoff-option${active ? ' handoff-option--selected' : ''}`}
+        aria-pressed={active}
+        data-selected={active}
         onClick={onClick}
       >
-        <span className="reflect__btn-label">{label}</span>
-        <span className="reflect__btn-value">{value}</span>
+        <span className="handoff-option__main">
+          <span className="handoff-option__label">{label}</span>
+          {active && <span className="handoff-option__badge">{badge}</span>}
+        </span>
+        <span className="handoff-option__amount">{value}</span>
       </button>
       <p className="muted reflect__desc">{desc}</p>
     </div>

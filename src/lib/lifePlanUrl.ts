@@ -5,6 +5,20 @@
 
 import type { MortgagePayload } from '../types/mortgage';
 
+/**
+ * 総合版 URL として使えるか。
+ * 空・parse 不可・ホストが example.com で終わる（仮 URL）の場合は false。
+ */
+export function isUsableLifePlanUrl(url: string): boolean {
+  if (!url || !url.trim()) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.length > 0 && host !== 'example.com' && !host.endsWith('.example.com');
+  } catch {
+    return false;
+  }
+}
+
 /** 円・年など「正の有限数」だけ採用。 */
 function positiveInt(value: number): string | null {
   return Number.isFinite(value) && value > 0 ? String(Math.round(value)) : null;

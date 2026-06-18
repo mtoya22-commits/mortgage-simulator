@@ -500,30 +500,84 @@ html[data-embedded='true'] .bottom-nav {
 .reflect__item + .reflect__item {
   margin-top: 4px;
 }
-.reflect__btn {
+
+/* 反映対象の選択ボタン。未選択は surface で読みやすく、選択時のみ深緑＋白文字。
+   disabled は使わない（押下可能なまま選択状態を表す）。 */
+.handoff-option {
+  appearance: none;
+  width: 100%;
   min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   text-align: left;
-  width: 100%;
+  cursor: pointer;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-.reflect__btn-label {
+.handoff-option:hover {
+  border-color: var(--accent);
+}
+.handoff-option--selected {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--brass) inset;
+}
+/* 選択時は中の文字をすべて白で固定（深緑背景で必ず読める） */
+.handoff-option--selected,
+.handoff-option--selected .handoff-option__label,
+.handoff-option--selected .handoff-option__amount {
+  color: #fff;
+}
+.handoff-option__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.handoff-option__label {
   font-size: 0.9rem;
 }
-.reflect__btn-value {
+.handoff-option__amount {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
-  opacity: 0.92;
   font-size: 0.85rem;
 }
-.reflect__btn.is-active {
-  box-shadow: 0 0 0 2px var(--brass) inset;
+/* 「選択中」バッジ: 白背景に深緑文字で、色だけに頼らずテキストでも判別 */
+.handoff-option__badge {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
 }
 .reflect__desc {
   margin: 0;
   font-size: 0.78rem;
+}
+
+/* 「今どの条件・いくら引き継ぐか」の要約 */
+.handoff-summary {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.handoff-summary__line {
+  margin: 2px 0;
+  font-size: 0.85rem;
+}
+.handoff-summary__line strong {
+  font-variant-numeric: tabular-nums;
 }
 
 /* 注意表示（赤は使わず、落ち着いたブラス/ブラウンで知らせる） */
