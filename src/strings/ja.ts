@@ -3,8 +3,15 @@
 
 import type { RateType, RepayMethod, MortgageSource } from '../types/mortgage';
 
-/** 総合版（人生全体の資産推移）への遷移先。MVP では仮 URL。 */
-export const LIFE_PLAN_LAB_URL = 'https://life-plan-lab.example.com/';
+/**
+ * 総合版（人生全体の資産推移）への遷移先。
+ * 本番デフォルトは固定の総合版ページ。env VITE_LIFE_PLAN_LAB_URL があれば上書き。
+ * example.com などの仮 URL は使わない。
+ */
+const DEFAULT_LIFE_PLAN_LAB_URL = 'https://fire-lifeplan-lab.com/life-plan-simulator/';
+export const LIFE_PLAN_LAB_URL =
+  (import.meta.env?.VITE_LIFE_PLAN_LAB_URL as string | undefined)?.trim() ||
+  DEFAULT_LIFE_PLAN_LAB_URL;
 
 export const strings = {
   app: {
@@ -239,10 +246,14 @@ export const strings = {
         button: '固定期間終了後シナリオを生活設計に反映する',
         desc: '固定期間終了後に想定した金利・返済額を使います。',
       },
+      selectedBadge: '選択中',
+      selectedConditionPrefix: '選択中の条件：',
+      carryPrefix: '総合版へ引き継ぐ毎月返済額：',
       viewLifePlan: '人生全体の資産推移で見る',
       viewLifePlanDesc: '選んだ条件を引き継いで、総合版で人生全体の資産推移を見ます。',
       savedPrefix: '生活設計に反映する条件として保存しました：',
       saveFailed: '保存できませんでした。ブラウザの設定（プライベートモードなど）をご確認ください。',
+      urlUnset: '総合版リンクが未設定です。URL設定後に利用できます。',
     },
   },
 
