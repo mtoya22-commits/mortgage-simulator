@@ -14,6 +14,12 @@ export const APP_SOURCE = 'mortgage-simulator';
 /** 高さの最低値（px）。極端に小さい値で iframe が潰れるのを防ぐ。 */
 export const DEFAULT_MIN_HEIGHT = 320;
 
+/** 送信高さに足す下端の安全余白（px）。端数で 1px 切れるのを防ぐ。 */
+export const BOTTOM_SAFETY_PX = 8;
+
+/** 遅延再計測のタイミング（ms）。チャート/フォント確定後の伸びを取りこぼさない保険。 */
+const REMEASURE_DELAYS = [150, 500, 1200, 2500];
+
 export interface ResizeMessage {
   type: typeof IFRAME_MESSAGE_TYPE;
   /** どのシミュレーターから来たか */
@@ -101,7 +107,7 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
       raf = 0;
       const docEl = document.documentElement;
       const body = document.body;
-      const height = pickHeight(
+      const base = pickHeight(
         [
           docEl?.scrollHeight ?? 0,
           docEl?.offsetHeight ?? 0,
@@ -110,6 +116,8 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
         ],
         minHeight,
       );
+      // 下端の安全余白を足してから送る（端数クリップ防止）
+      const height = base + BOTTOM_SAFETY_PX;
       if (height === last) return;
       last = height;
       try {
@@ -126,6 +134,8 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
 
     // 初回送信
     schedule();
+    // チャート/フォント/画像確定後の伸びを取りこぼさないよう、数回遅延再計測する
+    const timers = REMEASURE_DELAYS.map((ms) => window.setTimeout(schedule, ms));
 
     const ro = new ResizeObserver(schedule);
     if (document.documentElement) ro.observe(document.documentElement);
@@ -143,15 +153,20 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
 
     window.addEventListener('resize', schedule);
     window.addEventListener('load', schedule);
+    window.addEventListener('pageshow', schedule); // bfcache 復帰
+    document.addEventListener('visibilitychange', schedule); // タブ復帰
     // フォント読込で高さが変わることがあるので、確定後にもう一度送る
     document.fonts?.ready?.then(schedule).catch(() => {});
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      timers.forEach((id) => window.clearTimeout(id));
       ro.disconnect();
       mo.disconnect();
       window.removeEventListener('resize', schedule);
       window.removeEventListener('load', schedule);
+      window.removeEventListener('pageshow', schedule);
+      document.removeEventListener('visibilitychange', schedule);
     };
   }, [source, minHeight]);
 }
