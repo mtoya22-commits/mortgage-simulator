@@ -36,6 +36,44 @@ export function pickHeight(measurements: number[], minHeight: number): number {
   return Math.max(minHeight, ...(valid.length ? valid : [0]));
 }
 
+/** 全シミュレーター共通の「先頭へスクロール」通知 type。 */
+export const SCROLL_TOP_MESSAGE_TYPE = 'lifeplanlab:scrollTop';
+
+export interface ScrollTopMessage {
+  type: typeof SCROLL_TOP_MESSAGE_TYPE;
+  source: string;
+}
+
+/** 親へ送る「先頭へスクロール」メッセージを組み立てる（純粋関数, テスト容易）。 */
+export function buildScrollTopMessage(source: string): ScrollTopMessage {
+  return { type: SCROLL_TOP_MESSAGE_TYPE, source };
+}
+
+/**
+ * `key`（画面の phase など）が変わるたびにページ先頭へスクロールする hook。
+ * 単独表示では window をスクロールし、iframe 埋め込みでは親へ先頭スクロールを依頼する
+ * （クロスオリジンのため親自身がスクロールする必要がある）。
+ */
+export function useScrollTopOnChange(key: unknown, source: string = APP_SOURCE): void {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.scrollTo({ top: 0, left: 0 });
+    } catch {
+      try {
+        window.scrollTo(0, 0);
+      } catch {
+        /* noop */
+      }
+    }
+    try {
+      window.parent.postMessage(buildScrollTopMessage(source), '*');
+    } catch {
+      /* 親が無い / クロスオリジン制約でも落とさない */
+    }
+  }, [key, source]);
+}
+
 export interface AutoHeightOptions {
   /** 送信元の識別子（既定: APP_SOURCE） */
   source?: string;
