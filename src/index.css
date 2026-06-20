@@ -652,6 +652,47 @@ html[data-embedded='true'] .bottom-nav {
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+
+/* 返済額内訳の積み上げ（元金=緑 / 利息=ブラウン。赤は使わない） */
+.chart__area--principal {
+  fill: var(--accent);
+  opacity: 0.85;
+}
+.chart__area--interest {
+  fill: var(--band-tough);
+  opacity: 0.85;
+}
+.chart__line--principal {
+  stroke: #fff;
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+/* グラフ凡例 */
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.chart-legend__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.chart-legend__swatch--principal {
+  background: var(--accent);
+}
+.chart-legend__swatch--interest {
+  background: var(--band-tough);
+}
 .chart__payoff-dot {
   fill: var(--accent-strong);
 }

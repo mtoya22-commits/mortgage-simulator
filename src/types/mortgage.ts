@@ -68,6 +68,18 @@ export interface AmortPoint {
   balance: number;
 }
 
+/** 1 年ごとの返済額の内訳（円/月・年内平均、スケジュール返済のみ＝ボーナス除外） */
+export interface PaymentYear {
+  /** 経過年数（1 始まり） */
+  year: number;
+  /** その年の年齢 */
+  age: number;
+  /** 元金部分の毎月返済額（円/月, 概算） */
+  principal: number;
+  /** 利息部分の毎月返済額（円/月, 概算） */
+  interest: number;
+}
+
 /** 1 年ごとの残高推移（内部の月次シミュレーションから生成） */
 export interface AmortizationSchedule {
   points: AmortPoint[];
@@ -81,6 +93,8 @@ export interface AmortizationSchedule {
   inputPaymentFellBack: boolean;
   /** 現在の残高から完済までに支払う利息の概算（円） */
   totalInterest: number;
+  /** 1 年ごとの返済額の内訳（元金・利息, 円/月） */
+  breakdown: PaymentYear[];
 }
 
 /** 現在の残高から完済までの総額の概算（円）。 */
