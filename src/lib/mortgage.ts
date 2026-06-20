@@ -177,10 +177,15 @@ export function computeResult(input: MortgageInput): MortgageResult {
   const average = equalPrincipalAverageMonthly(input.balance, input.rate, input.remainingYears);
   const installment = equalInstallmentMonthly(input.balance, input.rate, input.remainingYears);
 
+  // 残り返済総額は返済方式ごとの正しい累計（残高 + 総利息）を返済スケジュールから算出する。
+  // 元利・元金で同じロジック・ボーナス前提。これで元金均等が元利均等より小さくなる。
+  const totals = estimateScenarioTotals(input, input.rate);
+
   return {
     annualPayment: annual,
     payoffAge: payoffAge(input.currentAge, input.remainingYears),
-    remainingTotal: remainingTotal(annual, input.remainingYears),
+    remainingTotal: totals.totalPayment,
+    totalInterest: totals.totalInterest,
     referenceMonthly:
       input.repayMethod === 'equal-principal' ? first : installment,
     referenceMonthlyFirst: input.repayMethod === 'equal-principal' ? first : installment,

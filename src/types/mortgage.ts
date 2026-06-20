@@ -48,9 +48,11 @@ export interface MortgageResult {
   annualPayment: number;
   /** 完済予定年齢（歳） = 現在年齢 + 残り返済年数 */
   payoffAge: number;
-  /** 残り返済総額の概算（円） = 年間返済額 × 残り返済年数 */
+  /** 残り返済総額の概算（円）。返済スケジュールから算出した累計返済額（= 残高 + 総支払利息） */
   remainingTotal: number;
-  /** 返済方式準拠の参考月返済額（元利均等=概算月額 / 元金均等=平均月額） */
+  /** 現在条件の総支払利息の概算（円） */
+  totalInterest: number;
+  /** 返済方式準拠の参考月返済額（元利均等=概算月額 / 元金均等=初回付近） */
   referenceMonthly: number;
   /** 元金均等の初回付近 月返済額（元利均等では referenceMonthly と一致） */
   referenceMonthlyFirst: number;

@@ -116,6 +116,9 @@ export const strings = {
       annualPayment: {
         label: '年間返済額',
         caption: '毎月返済額 × 12 + ボーナス返済 年額',
+        // 元金均等は返済額が逓減するため初年度の値であることを明示
+        labelEqualPrincipal: '初年度の年間返済額',
+        captionEqualPrincipal: '初回の毎月返済額 × 12 + ボーナス返済 年額（初年度の目安）',
       },
       payoffAge: {
         label: '完済予定の年齢',
@@ -124,12 +127,14 @@ export const strings = {
       },
       remainingTotal: {
         label: '残り返済総額の概算',
-        caption: '年間返済額 × 残りの返済年数（簡易試算）',
+        caption: '返済スケジュールから算出した累計返済額の概算（現在の金利が続く前提）',
       },
       referenceMonthly: {
         label: '参考 月返済額',
         caption:
           '残高・金利・残り年数・返済方式から計算した、現在の毎月返済額の目安です（元金均等は初回付近）。実際の返済額とは異なります。',
+        // 元金均等は初回の月返済額であることを明示
+        labelEqualPrincipal: '初回の月返済額',
       },
     },
 

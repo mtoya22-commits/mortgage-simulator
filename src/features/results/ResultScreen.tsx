@@ -40,8 +40,6 @@ export function ResultScreen() {
   const schedule = useMemo(() => buildAmortizationSchedule(input), [input]);
   const impact = useMemo(() => fixedPeriodImpact(input), [input]);
   const divergence = useMemo(() => monthlyPaymentDivergence(input), [input]);
-  // 現在条件の総支払額（現在の残高から完済までの概算）
-  const currentTotals = useMemo(() => estimateScenarioTotals(input, input.rate), [input]);
   // 固定期間終了後の想定金利での総支払利息（configured 時のみ意味を持つ）
   const fixedTotals = useMemo(
     () => estimateScenarioTotals(input, impact.postRate),
@@ -132,9 +130,17 @@ export function ResultScreen() {
         {/* 主指標 */}
         <section className="metrics">
           <div className="metric metric--primary">
-            <span className="metric__label">{t.metrics.annualPayment.label}</span>
+            <span className="metric__label">
+              {isEqualPrincipal
+                ? t.metrics.annualPayment.labelEqualPrincipal
+                : t.metrics.annualPayment.label}
+            </span>
             <span className="metric__value">{yen(result.annualPayment)}</span>
-            <span className="metric__caption muted">{t.metrics.annualPayment.caption}</span>
+            <span className="metric__caption muted">
+              {isEqualPrincipal
+                ? t.metrics.annualPayment.captionEqualPrincipal
+                : t.metrics.annualPayment.caption}
+            </span>
           </div>
           <div className="metric">
             <span className="metric__label">{t.metrics.payoffAge.label}</span>
@@ -149,7 +155,11 @@ export function ResultScreen() {
             <span className="metric__caption muted">{t.metrics.remainingTotal.caption}</span>
           </div>
           <div className="metric metric--ref">
-            <span className="metric__label">{t.metrics.referenceMonthly.label}</span>
+            <span className="metric__label">
+              {isEqualPrincipal
+                ? t.metrics.referenceMonthly.labelEqualPrincipal
+                : t.metrics.referenceMonthly.label}
+            </span>
             <span className="metric__value">{yenPerMonth(result.referenceMonthly)}</span>
             <span className="metric__caption muted">{t.metrics.referenceMonthly.caption}</span>
           </div>
@@ -190,8 +200,8 @@ export function ResultScreen() {
             {t.totals.heading}
           </h2>
           <dl className="kv">
-            <KV label={t.totals.totalPayment} value={man(currentTotals.totalPayment)} />
-            <KV label={t.totals.totalInterest} value={man(currentTotals.totalInterest)} />
+            <KV label={t.totals.totalPayment} value={man(result.remainingTotal)} />
+            <KV label={t.totals.totalInterest} value={man(result.totalInterest)} />
           </dl>
           <p className="muted panel__note">{t.totals.caption}</p>
         </section>
