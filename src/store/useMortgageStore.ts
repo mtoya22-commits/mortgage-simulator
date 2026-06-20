@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import type { MortgageInput } from '../types/mortgage';
 import { referenceMonthlyByMethod } from '../lib/mortgage';
-import { saveMortgageDraft } from '../lib/storage';
+import { saveMortgageDraft, loadMortgageDraft, clearMortgageDraft } from '../lib/storage';
 
 export type Phase = 'intro' | 'input' | 'result';
 
@@ -66,9 +66,18 @@ interface MortgageStore {
   reset: () => void;
 }
 
+/**
+ * 起動時の初期 input。下書き（lifePlanLab:mortgageDraft）があれば静かに復元し、
+ * リロード・再訪で入力が消えないようにする。スキーマ差異に備え initialInput に重ねる。
+ */
+function restoreInitialInput(): MortgageInput {
+  const draft = loadMortgageDraft();
+  return draft ? { ...initialInput, ...draft } : initialInput;
+}
+
 export const useMortgageStore = create<MortgageStore>((set) => ({
   phase: 'intro',
-  input: initialInput,
+  input: restoreInitialInput(),
 
   goTo: (phase) => set({ phase }),
 
@@ -121,5 +130,8 @@ export const useMortgageStore = create<MortgageStore>((set) => ({
       return { input: next };
     }),
 
-  reset: () => set({ phase: 'intro', input: initialInput }),
+  reset: () => {
+    clearMortgageDraft(); // 「最初から」: 下書きも消して真にリセット
+    set({ phase: 'intro', input: initialInput });
+  },
 }));

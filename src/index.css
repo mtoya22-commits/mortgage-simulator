@@ -94,6 +94,16 @@
 }
 
 /* 数値入力 */
+.numfield-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.numfield__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
 .numfield {
   display: flex;
   align-items: center;

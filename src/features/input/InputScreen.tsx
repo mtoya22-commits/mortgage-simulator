@@ -71,6 +71,7 @@ export function InputScreen() {
               placeholder={f.balance.placeholder}
               allowDecimal={false}
               ariaLabel={f.balance.label}
+              manHint
             />
           </QuestionCard>
 
@@ -153,6 +154,7 @@ export function InputScreen() {
               placeholder={f.bonusAnnual.placeholder}
               allowDecimal={false}
               ariaLabel={f.bonusAnnual.label}
+              manHint
             />
           </QuestionCard>
 
@@ -165,6 +167,7 @@ export function InputScreen() {
               placeholder={m.placeholder}
               allowDecimal={false}
               ariaLabel={m.label}
+              manHint
             />
             <div className="monthly-meta">
               <span className={`tag ${isManual ? 'tag--manual' : 'tag--auto'}`}>

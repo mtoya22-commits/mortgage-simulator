@@ -79,6 +79,18 @@ export interface AmortizationSchedule {
   paymentBasis: 'reference' | 'input';
   /** 入力した毎月返済額での試算を試みたが、参考ベースへ戻したか */
   inputPaymentFellBack: boolean;
+  /** 現在の残高から完済までに支払う利息の概算（円） */
+  totalInterest: number;
+}
+
+/** 現在の残高から完済までの総額の概算（円）。 */
+export interface PaymentTotals {
+  /** 総支払利息の概算 */
+  totalInterest: number;
+  /** 総返済額の概算（= 残高 + 総支払利息） */
+  totalPayment: number;
+  /** 完済予定の経過年数（完済しない場合 null） */
+  payoffYear: number | null;
 }
 
 /** 入力した毎月返済額と参考月返済額の乖離 */

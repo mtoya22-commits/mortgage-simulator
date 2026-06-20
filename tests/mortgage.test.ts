@@ -16,6 +16,7 @@ import {
   fixedPeriodExceedsTerm,
   isSignificantMonthlyDivergence,
   monthlyPaymentDivergence,
+  estimateScenarioTotals,
 } from '../src/lib/mortgage';
 import { useMortgageStore, initialInput } from '../src/store/useMortgageStore';
 import type { MortgageInput } from '../src/types/mortgage';
@@ -310,6 +311,58 @@ describe('buildAmortizationSchedule', () => {
     const y20Low = lowPost.points.find((p) => p.year === 20)!.balance;
     const y20High = highPost.points.find((p) => p.year === 20)!.balance;
     expect(y20High).toBeGreaterThanOrEqual(y20Low);
+  });
+});
+
+describe('estimateScenarioTotals（総支払利息・総返済額）', () => {
+  it('総返済額 = 残高 + 総支払利息、利息は正', () => {
+    const tt = estimateScenarioTotals(makeInput({ bonusAnnual: 0 }), 0.925);
+    expect(tt.totalInterest).toBeGreaterThan(0);
+    expect(tt.totalPayment).toBeCloseTo(30_000_000 + tt.totalInterest, 0);
+  });
+
+  it('金利が高いほど総支払利息が増える', () => {
+    const low = estimateScenarioTotals(makeInput({ bonusAnnual: 0 }), 0.5);
+    const high = estimateScenarioTotals(makeInput({ bonusAnnual: 0 }), 2.0);
+    expect(high.totalInterest).toBeGreaterThan(low.totalInterest);
+  });
+
+  it('金利 0% は総支払利息がほぼ 0', () => {
+    const tt = estimateScenarioTotals(makeInput({ bonusAnnual: 0 }), 0);
+    expect(tt.totalInterest).toBeCloseTo(0, 0);
+    expect(tt.totalPayment).toBeCloseTo(30_000_000, 0);
+  });
+
+  it('ボーナス返済があると総支払利息が減る（早く減るため）', () => {
+    const withoutBonus = estimateScenarioTotals(makeInput({ bonusAnnual: 0 }), 1.5);
+    const withBonus = estimateScenarioTotals(makeInput({ bonusAnnual: 600_000 }), 1.5);
+    expect(withBonus.totalInterest).toBeLessThan(withoutBonus.totalInterest);
+  });
+
+  it('元利均等・元金均等のどちらでも算出できる', () => {
+    const ep = estimateScenarioTotals(makeInput({ repayMethod: 'equal-payment' }), 1.2);
+    const epp = estimateScenarioTotals(makeInput({ repayMethod: 'equal-principal' }), 1.2);
+    expect(ep.totalInterest).toBeGreaterThan(0);
+    expect(epp.totalInterest).toBeGreaterThan(0);
+  });
+
+  it('固定期間の入力でも、指定金利が一定で続く前提で算出する（切替に依存しない）', () => {
+    const fixedInput = makeInput({
+      rateType: 'fixed-period',
+      fixedPeriodRemainingYears: 10,
+      postFixedRate: 3.0,
+    });
+    // 同じ金利を渡せば、固定期間設定の有無で結果は変わらない（正規化されるため）
+    const a = estimateScenarioTotals(fixedInput, 1.2);
+    const b = estimateScenarioTotals(makeInput({ rateType: 'variable' }), 1.2);
+    expect(a.totalInterest).toBeCloseTo(b.totalInterest, 0);
+  });
+
+  it('0 / 未入力でもクラッシュせず有限値', () => {
+    const tt = estimateScenarioTotals(makeInput({ balance: null, remainingYears: null }), null);
+    expect(Number.isFinite(tt.totalInterest)).toBe(true);
+    expect(tt.totalInterest).toBe(0);
+    expect(Number.isFinite(tt.totalPayment)).toBe(true);
   });
 });
 

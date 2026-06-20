@@ -11,6 +11,7 @@ import type {
   AmortPoint,
   FixedPeriodImpact,
   MonthlyDivergence,
+  PaymentTotals,
 } from '../types/mortgage';
 
 /**
@@ -246,6 +247,8 @@ interface RunResult {
   fixedPeriodEndYear: number | null;
   /** 返済期間 n 月内に残高が ~0 に到達したか（手動額ベース採否の判定に使う） */
   amortized: boolean;
+  /** 現在の残高から完済までに支払う利息の合計（概算, 円） */
+  totalInterest: number;
 }
 
 /**
@@ -297,11 +300,13 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
       payoffYear: principal0 === 0 ? 0 : null,
       fixedPeriodEndYear,
       amortized: principal0 === 0,
+      totalInterest: 0,
     };
   }
 
   let balance = principal0;
   let payoffYear: number | null = null;
+  let totalInterest = 0;
 
   // 入力した毎月返済額ベース（元利均等のみ。全期間一定）
   const useOverride =
@@ -330,6 +335,7 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
     }
 
     const interest = balance * r;
+    totalInterest += interest;
     let principalPaid: number;
     if (method === 'equal-principal') {
       principalPaid = equalPrincipalPortion;
@@ -372,7 +378,7 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
     points.push({ year: totalYears, age: baseAge + totalYears, balance: 0 });
   }
 
-  return { points, payoffYear, fixedPeriodEndYear, amortized };
+  return { points, payoffYear, fixedPeriodEndYear, amortized, totalInterest };
 }
 
 /**
@@ -398,6 +404,7 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
         fixedPeriodEndYear: tryInput.fixedPeriodEndYear,
         paymentBasis: 'input',
         inputPaymentFellBack: false,
+        totalInterest: tryInput.totalInterest,
       };
     }
     // 入力額では期間内に完済しない概算 → 参考ベースへフォールバック
@@ -408,6 +415,7 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
       fixedPeriodEndYear: ref.fixedPeriodEndYear,
       paymentBasis: 'reference',
       inputPaymentFellBack: true,
+      totalInterest: ref.totalInterest,
     };
   }
 
@@ -418,6 +426,36 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
     fixedPeriodEndYear: ref.fixedPeriodEndYear,
     paymentBasis: 'reference',
     inputPaymentFellBack: false,
+    totalInterest: ref.totalInterest,
+  };
+}
+
+/**
+ * 現在の残高から完済までの「総支払利息・総返済額」の概算（純粋関数）。
+ *
+ * 現在条件・金利変更・固定期間終了後の各試算で **同じ計算ロジック・同じボーナス前提** から
+ * 算出するため、入力を「指定金利が一定で続く」形へ正規化し（固定期間の切替・入力額ベースを排除）、
+ * 参考額ベースの月次シミュレーションで利息を積み上げる。
+ * totalPayment = 残高 + totalInterest（元金は必ず全額返すため）。
+ */
+export function estimateScenarioTotals(
+  input: MortgageInput,
+  ratePct: number | null | undefined,
+): PaymentTotals {
+  const normalized: MortgageInput = {
+    ...input,
+    rate: safeNumber(ratePct),
+    rateType: 'variable',
+    fixedPeriodRemainingYears: null,
+    postFixedRate: null,
+    monthlyPaymentSource: 'auto', // 参考額ベースで統一
+  };
+  const run = runSchedule(normalized, null);
+  const totalInterest = Math.max(0, run.totalInterest);
+  return {
+    totalInterest,
+    totalPayment: safeNumber(input.balance) + totalInterest,
+    payoffYear: run.payoffYear,
   };
 }
 

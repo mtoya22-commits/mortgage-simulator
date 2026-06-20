@@ -4,7 +4,7 @@
 // 月返済額の絶対値は、入力した毎月返済額がある場合はそれを起点に増加分を足して表示する。
 
 import { useMemo, useState } from 'react';
-import { rateScenarioAt, safeNumber } from '../../lib/mortgage';
+import { rateScenarioAt, estimateScenarioTotals, safeNumber } from '../../lib/mortgage';
 import { yenPerMonth, yen, man, signedYen, signedMan, percent } from '../../lib/format';
 import { strings, RATE_STEPS } from '../../strings/ja';
 import type { MortgageInput } from '../../types/mortgage';
@@ -40,6 +40,18 @@ export function RateAdjustCard({ input, rate, onRateChange }: RateAdjustCardProp
   const displayMonthly =
     userMonthly > 0 ? userMonthly + scenario.monthlyIncrease : scenario.referenceMonthly;
   const monthlyLabel = userMonthly > 0 ? t.monthlyAnchored : t.referenceMonthly;
+
+  // 総支払利息（この金利の概算）と現在条件との差（現在条件と同一ロジック）。
+  const tt = strings.result.totals;
+  const currentInterest = useMemo(
+    () => estimateScenarioTotals(input, baseRate).totalInterest,
+    [input, baseRate],
+  );
+  const trialInterest = useMemo(
+    () => estimateScenarioTotals(input, rate).totalInterest,
+    [input, rate],
+  );
+  const interestDiff = trialInterest - currentInterest;
 
   const changed = round(rate) !== round(baseRate);
 
@@ -119,6 +131,14 @@ export function RateAdjustCard({ input, rate, onRateChange }: RateAdjustCardProp
           <dd className={scenario.remainingTotalIncrease > 0 ? 'is-up' : ''}>
             {signedMan(scenario.remainingTotalIncrease)}
           </dd>
+        </div>
+        <div className="adjust__item">
+          <dt>{tt.rateAdjustLabel}</dt>
+          <dd>{man(trialInterest)}</dd>
+        </div>
+        <div className="adjust__item">
+          <dt>{tt.rateAdjustDiff}</dt>
+          <dd className={interestDiff > 0 ? 'is-up' : ''}>{signedMan(interestDiff)}</dd>
         </div>
       </dl>
 
