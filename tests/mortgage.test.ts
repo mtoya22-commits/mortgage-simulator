@@ -366,6 +366,62 @@ describe('estimateScenarioTotals（総支払利息・総返済額）', () => {
   });
 });
 
+describe('返済額の内訳（breakdown）', () => {
+  it('要素があり、各値が有限・非負', () => {
+    const { breakdown } = buildAmortizationSchedule(makeInput({ bonusAnnual: 0 }));
+    expect(breakdown.length).toBeGreaterThan(0);
+    for (const b of breakdown) {
+      expect(Number.isFinite(b.principal)).toBe(true);
+      expect(Number.isFinite(b.interest)).toBe(true);
+      expect(b.principal).toBeGreaterThanOrEqual(0);
+      expect(b.interest).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('元利均等: 毎月返済額（元金+利息）はほぼ一定で、利息は逓減する', () => {
+    const { breakdown } = buildAmortizationSchedule(
+      makeInput({ repayMethod: 'equal-payment', monthlyPaymentSource: 'auto', bonusAnnual: 0 }),
+    );
+    const totals = breakdown.map((b) => b.principal + b.interest);
+    const first = totals[0];
+    // 各年の月額合計が初年比 ±3% 以内（ほぼ一定）
+    for (const tot of totals) {
+      expect(Math.abs(tot - first) / first).toBeLessThan(0.03);
+    }
+    // 利息は単調に減る
+    for (let i = 1; i < breakdown.length; i++) {
+      expect(breakdown[i].interest).toBeLessThanOrEqual(breakdown[i - 1].interest + 1);
+    }
+    // 元金は増える
+    expect(breakdown[breakdown.length - 1].principal).toBeGreaterThan(breakdown[0].principal);
+  });
+
+  it('元金均等: 毎月返済額（元金+利息）が逓減する', () => {
+    const { breakdown } = buildAmortizationSchedule(
+      makeInput({ repayMethod: 'equal-principal', bonusAnnual: 0 }),
+    );
+    const totals = breakdown.map((b) => b.principal + b.interest);
+    for (let i = 1; i < totals.length; i++) {
+      expect(totals[i]).toBeLessThanOrEqual(totals[i - 1] + 1);
+    }
+  });
+
+  it('ボーナス0・元利均等で、元金の年額合計が残高に概ね整合する', () => {
+    const { breakdown } = buildAmortizationSchedule(
+      makeInput({ repayMethod: 'equal-payment', monthlyPaymentSource: 'auto', bonusAnnual: 0 }),
+    );
+    // principal は月額平均なので ×12 で年額。最終年は端数だが、概ね残高に到達する
+    const sumPrincipal = breakdown.reduce((s, b) => s + b.principal * 12, 0);
+    expect(sumPrincipal).toBeGreaterThan(30_000_000 * 0.9);
+    expect(sumPrincipal).toBeLessThan(30_000_000 * 1.1);
+  });
+
+  it('残高/年数 0 では breakdown が空でクラッシュしない', () => {
+    expect(buildAmortizationSchedule(makeInput({ balance: null })).breakdown).toEqual([]);
+    expect(buildAmortizationSchedule(makeInput({ remainingYears: 0 })).breakdown).toEqual([]);
+  });
+});
+
 describe('buildAmortizationSchedule の返済額ベース判定', () => {
   it('自動計算のまま（source=auto）は参考ベース', () => {
     const s = buildAmortizationSchedule(makeInput({ monthlyPaymentSource: 'auto' }));

@@ -25,6 +25,7 @@ import { yen, man, yenPerMonth, signedYen, signedMan, percent } from '../../lib/
 import type { MortgageSource } from '../../types/mortgage';
 import { RateAdjustCard } from './RateAdjustCard';
 import { BalanceChart } from './BalanceChart';
+import { PaymentBreakdownChart } from './PaymentBreakdownChart';
 
 export function ResultScreen() {
   const { input, goTo } = useMortgageStore();
@@ -273,6 +274,18 @@ export function ResultScreen() {
           {safeNumber(input.bonusAnnual) > 0 && (
             <p className="muted panel__note">{t.balanceChart.bonusNote}</p>
           )}
+        </section>
+
+        {/* 1年ごとの返済額の内訳（元金・利息） */}
+        <section className="collapsible collapsible--card panel">
+          <h2 className="section-heading" style={{ marginTop: 0 }}>
+            {t.paymentChart.heading}
+          </h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            {t.paymentChart.lead}
+          </p>
+          <PaymentBreakdownChart schedule={schedule} />
+          <p className="muted panel__note">{t.paymentChart.note}</p>
         </section>
 
         {/* 固定期間終了後シミュレーション（固定期間選択型のみ） */}

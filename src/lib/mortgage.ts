@@ -9,6 +9,7 @@ import type {
   RepayMethod,
   AmortizationSchedule,
   AmortPoint,
+  PaymentYear,
   FixedPeriodImpact,
   MonthlyDivergence,
   PaymentTotals,
@@ -249,6 +250,8 @@ interface RunResult {
   amortized: boolean;
   /** 現在の残高から完済までに支払う利息の合計（概算, 円） */
   totalInterest: number;
+  /** 1 年ごとの返済額の内訳（元金・利息, 円/月の年内平均, ボーナス除外） */
+  breakdown: PaymentYear[];
 }
 
 /**
@@ -301,12 +304,31 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
       fixedPeriodEndYear,
       amortized: principal0 === 0,
       totalInterest: 0,
+      breakdown: [],
     };
   }
 
   let balance = principal0;
   let payoffYear: number | null = null;
   let totalInterest = 0;
+
+  // 1 年ごとの返済額内訳（スケジュール返済のみ＝ボーナス除外, 円/月の年内平均）
+  const breakdown: PaymentYear[] = [];
+  let yearInterest = 0;
+  let yearScheduledPrincipal = 0;
+  let yearMonths = 0;
+  const pushYear = (year: number) => {
+    if (yearMonths === 0) return;
+    breakdown.push({
+      year,
+      age: baseAge + year,
+      principal: yearScheduledPrincipal / yearMonths,
+      interest: yearInterest / yearMonths,
+    });
+    yearInterest = 0;
+    yearScheduledPrincipal = 0;
+    yearMonths = 0;
+  };
 
   // 入力した毎月返済額ベース（元利均等のみ。全期間一定）
   const useOverride =
@@ -345,6 +367,11 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
       if (principalPaid < 0) principalPaid = 0;
     }
 
+    // 内訳はスケジュール返済（ボーナス前）の元金・利息で集計する
+    yearInterest += interest;
+    yearScheduledPrincipal += principalPaid;
+    yearMonths += 1;
+
     balance = balance - principalPaid;
 
     // 年末にボーナスを追加元金として概算反映
@@ -358,6 +385,7 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
     if (m % 12 === 0) {
       const year = m / 12;
       points.push({ year, age: baseAge + year, balance });
+      pushYear(year);
       if (balance === 0 && payoffYear == null) payoffYear = year;
     } else if (balance === 0 && payoffYear == null) {
       // 年の途中で完済した場合、その年（切り上げ）を完済年とし点を打つ
@@ -365,6 +393,7 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
       if (points[points.length - 1]?.year !== year) {
         points.push({ year, age: baseAge + year, balance: 0 });
       }
+      pushYear(year);
       payoffYear = year;
     }
   }
@@ -378,7 +407,7 @@ function runSchedule(input: MortgageInput, monthlyOverride: number | null): RunR
     points.push({ year: totalYears, age: baseAge + totalYears, balance: 0 });
   }
 
-  return { points, payoffYear, fixedPeriodEndYear, amortized, totalInterest };
+  return { points, payoffYear, fixedPeriodEndYear, amortized, totalInterest, breakdown };
 }
 
 /**
@@ -405,6 +434,7 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
         paymentBasis: 'input',
         inputPaymentFellBack: false,
         totalInterest: tryInput.totalInterest,
+        breakdown: tryInput.breakdown,
       };
     }
     // 入力額では期間内に完済しない概算 → 参考ベースへフォールバック
@@ -416,6 +446,7 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
       paymentBasis: 'reference',
       inputPaymentFellBack: true,
       totalInterest: ref.totalInterest,
+      breakdown: ref.breakdown,
     };
   }
 
@@ -427,6 +458,7 @@ export function buildAmortizationSchedule(input: MortgageInput): AmortizationSch
     paymentBasis: 'reference',
     inputPaymentFellBack: false,
     totalInterest: ref.totalInterest,
+    breakdown: ref.breakdown,
   };
 }
 
