@@ -1,5 +1,23 @@
 // 表示用の整形ユーティリティ。計算結果（円・%）を読みやすい日本語表記にする。
 
+/**
+ * 入力文字列を数値へ正規化する（純粋関数）。
+ * 全角数字/全角ピリオド/全角マイナスを半角化し、カンマ・空白・「円 ¥ %」を除去してから解釈する。
+ * 空・解釈不能・非有限は null（＝未入力扱い）。日本語モバイル入力に強くするため。
+ */
+export function parseNumericInput(raw: string): number | null {
+  if (raw == null) return null;
+  // 全角英数記号を半角へ（0xFF01-0xFF5E → 0x21-0x7E）、全角スペースも半角に
+  const halfWidth = raw
+    .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    .replace(/　/g, ' ');
+  // カンマ・空白・通貨/単位記号を除去
+  const cleaned = halfWidth.replace(/[,\s円¥￥%％]/g, '').trim();
+  if (cleaned === '') return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /** 円を整数でカンマ区切りに（例: 1234567 → "1,234,567 円"）。 */
 export function yen(value: number): string {
   return `${Math.round(safe(value)).toLocaleString('ja-JP')} 円`;

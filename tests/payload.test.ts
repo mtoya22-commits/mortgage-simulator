@@ -5,6 +5,7 @@ import {
   loadMortgagePayload,
   saveMortgageDraft,
   loadMortgageDraft,
+  clearMortgageDraft,
   STORAGE_KEY,
   DRAFT_STORAGE_KEY,
   type ScenarioSelection,
@@ -129,6 +130,14 @@ describe('localStorage の確定キーと下書きキーの分離', () => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     expect(raw).not.toBeNull();
     expect(loadMortgagePayload()?.selectedMonthlyPaymentYen).toBe(95_000);
+  });
+
+  it('下書きの保存→復元→削除ができる', () => {
+    expect(loadMortgageDraft()).toBeNull();
+    saveMortgageDraft(makeInput({ balance: 12_345_678 }));
+    expect(loadMortgageDraft()?.balance).toBe(12_345_678);
+    clearMortgageDraft();
+    expect(loadMortgageDraft()).toBeNull();
   });
 
   it('確定キーと下書きキーは混同されない', () => {

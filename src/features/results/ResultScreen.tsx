@@ -12,6 +12,7 @@ import {
   buildAmortizationSchedule,
   fixedPeriodImpact,
   monthlyPaymentDivergence,
+  estimateScenarioTotals,
   safeNumber,
 } from '../../lib/mortgage';
 import {
@@ -38,6 +39,13 @@ export function ResultScreen() {
   const schedule = useMemo(() => buildAmortizationSchedule(input), [input]);
   const impact = useMemo(() => fixedPeriodImpact(input), [input]);
   const divergence = useMemo(() => monthlyPaymentDivergence(input), [input]);
+  // 現在条件の総支払額（現在の残高から完済までの概算）
+  const currentTotals = useMemo(() => estimateScenarioTotals(input, input.rate), [input]);
+  // 固定期間終了後の想定金利での総支払利息（configured 時のみ意味を持つ）
+  const fixedTotals = useMemo(
+    () => estimateScenarioTotals(input, impact.postRate),
+    [input, impact.postRate],
+  );
   const inputMonthly = safeNumber(input.monthlyPayment);
   const isEqualPrincipal = input.repayMethod === 'equal-principal';
   const isFixedPeriod = input.rateType === 'fixed-period';
@@ -175,6 +183,18 @@ export function ResultScreen() {
           <p className="muted panel__note">{ms.note}</p>
         </section>
 
+        {/* 総支払額の目安（現在の残高から完済まで） */}
+        <section className="collapsible collapsible--card panel">
+          <h2 className="section-heading" style={{ marginTop: 0 }}>
+            {t.totals.heading}
+          </h2>
+          <dl className="kv">
+            <KV label={t.totals.totalPayment} value={man(currentTotals.totalPayment)} />
+            <KV label={t.totals.totalInterest} value={man(currentTotals.totalInterest)} />
+          </dl>
+          <p className="muted panel__note">{t.totals.caption}</p>
+        </section>
+
         {/* What-if を上に: 金利ステッパー */}
         <RateAdjustCard input={input} rate={trialRate} onRateChange={setTrialRate} />
 
@@ -278,6 +298,7 @@ export function ResultScreen() {
                     value={`${signedYen(impact.annualIncrease)} / 年`}
                     emphasize
                   />
+                  <KV label={t.totals.fixedLabel} value={man(fixedTotals.totalInterest)} />
                 </dl>
                 <p className="muted panel__note">{t.fixedPeriod.note}</p>
               </>

@@ -137,3 +137,12 @@ export function loadMortgageDraft(): MortgageInput | null {
     return null;
   }
 }
+
+/** 入力途中の下書きを削除する（「最初からやり直す」用）。 */
+export function clearMortgageDraft(): void {
+  try {
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    /* 利用不可環境でも落とさない */
+  }
+}
