@@ -136,7 +136,10 @@ describe('computeResult', () => {
     const r = computeResult(baseInput);
     expect(r.annualPayment).toBe(85_000 * 12 + 200_000);
     expect(r.payoffAge).toBe(65);
-    expect(r.remainingTotal).toBe(r.annualPayment * 25);
+    // 残り返済総額は返済スケジュール由来（残高 + 総利息）。旧 annual×年数 ではない
+    expect(r.remainingTotal).toBeCloseTo(30_000_000 + r.totalInterest, 0);
+    expect(r.remainingTotal).toBeGreaterThan(30_000_000);
+    expect(r.totalInterest).toBeGreaterThan(0);
     expect(r.referenceMonthly).toBeGreaterThan(0);
   });
 
@@ -154,8 +157,33 @@ describe('computeResult', () => {
     expect(r.annualPayment).toBe(0);
     expect(r.payoffAge).toBe(0);
     expect(r.remainingTotal).toBe(0);
+    expect(r.totalInterest).toBe(0);
     expect(r.referenceMonthly).toBe(0);
     expect(Number.isFinite(r.referenceMonthly)).toBe(true);
+  });
+
+  it('同一条件では 元金均等の総返済額 < 元利均等の総返済額（利息が少ない）', () => {
+    const ep = computeResult(makeInput({ repayMethod: 'equal-payment', bonusAnnual: 0 }));
+    const epp = computeResult(makeInput({ repayMethod: 'equal-principal', bonusAnnual: 0 }));
+    expect(epp.remainingTotal).toBeLessThan(ep.remainingTotal);
+    expect(epp.totalInterest).toBeLessThan(ep.totalInterest);
+  });
+
+  it('ボーナス返済ありでも 元金均等 < 元利均等、総額は 残高 + 総利息', () => {
+    const ep = computeResult(makeInput({ repayMethod: 'equal-payment', bonusAnnual: 300_000 }));
+    const epp = computeResult(makeInput({ repayMethod: 'equal-principal', bonusAnnual: 300_000 }));
+    expect(epp.remainingTotal).toBeLessThan(ep.remainingTotal);
+    expect(ep.remainingTotal).toBeCloseTo(30_000_000 + ep.totalInterest, 0);
+    expect(epp.remainingTotal).toBeCloseTo(30_000_000 + epp.totalInterest, 0);
+  });
+
+  it('金利0%では両方式とも 残り返済総額 ≈ 残高（利息ほぼ0）', () => {
+    const ep = computeResult(makeInput({ rate: 0, repayMethod: 'equal-payment', bonusAnnual: 0 }));
+    const epp = computeResult(makeInput({ rate: 0, repayMethod: 'equal-principal', bonusAnnual: 0 }));
+    expect(ep.remainingTotal).toBeCloseTo(30_000_000, 0);
+    expect(epp.remainingTotal).toBeCloseTo(30_000_000, 0);
+    expect(ep.totalInterest).toBeCloseTo(0, 0);
+    expect(epp.totalInterest).toBeCloseTo(0, 0);
   });
 });
 
