@@ -103,21 +103,21 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
     let raf = 0;
     let last = -1;
 
+    // React アプリ実体（.app, 無ければ #root）の自然なコンテンツ高さを送る。
+    // documentElement / body は親 iframe の高さ（style.height）に引っ張られ、
+    // それを再送する自己増殖ループ＝末尾の過剰な余白になるため、高さ算出に使わない。
     const measure = () => {
       raf = 0;
-      const docEl = document.documentElement;
-      const body = document.body;
-      const base = pickHeight(
-        [
-          docEl?.scrollHeight ?? 0,
-          docEl?.offsetHeight ?? 0,
-          body?.scrollHeight ?? 0,
-          body?.offsetHeight ?? 0,
-        ],
-        minHeight,
-      );
+      const target =
+        document.querySelector<HTMLElement>('.app') ?? document.getElementById('root');
+      const contentHeight = target
+        ? Math.max(
+            Math.ceil(target.scrollHeight),
+            Math.ceil(target.getBoundingClientRect().height),
+          )
+        : minHeight;
       // 下端の安全余白を足してから送る（端数クリップ防止）
-      const height = base + BOTTOM_SAFETY_PX;
+      const height = Math.max(minHeight, contentHeight) + BOTTOM_SAFETY_PX;
       if (height === last) return;
       last = height;
       try {
@@ -137,9 +137,12 @@ export function useIframeAutoHeight(options: AutoHeightOptions = {}): void {
     // チャート/フォント/画像確定後の伸びを取りこぼさないよう、数回遅延再計測する
     const timers = REMEASURE_DELAYS.map((ms) => window.setTimeout(schedule, ms));
 
+    // ResizeObserver は #root（再マウントされない安定要素。無ければ .app）だけを監視する。
+    // documentElement / body は監視しない（親 iframe 高さでの自己増殖を避ける）。
+    const observeTarget =
+      document.getElementById('root') ?? document.querySelector<HTMLElement>('.app');
     const ro = new ResizeObserver(schedule);
-    if (document.documentElement) ro.observe(document.documentElement);
-    if (document.body) ro.observe(document.body);
+    if (observeTarget) ro.observe(observeTarget);
 
     const mo = new MutationObserver(schedule);
     if (document.body) {
